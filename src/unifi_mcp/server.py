@@ -1,7 +1,7 @@
 import functools
 import inspect
 
-from fastmcp import FastMCP
+from fastmcp import Context, FastMCP
 
 from unifi_mcp.config import UnifiConfig
 from unifi_mcp.cache import TTLCache
@@ -63,7 +63,7 @@ async def _probe_product(product: str) -> bool:
     return isinstance(result, (dict, list))
 
 
-async def _load_product(product: str) -> str:
+async def _load_product(product: str, ctx: Context | None = None) -> str:
     """Load tools for a product and register them with FastMCP."""
     if registry.is_loaded(product):
         return f"{product.title()} tools already loaded."
@@ -76,25 +76,33 @@ async def _load_product(product: str) -> str:
         mcp.tool()(_bind_client(tool_fn))
 
     registry.mark_loaded(product, len(tools))
+
+    # FastMCP registers tools on the server but does not emit the MCP
+    # notifications/tools/list_changed notification, so the client keeps its
+    # stale tool list. Send it explicitly so the newly registered tools
+    # become callable in the current session.
+    if ctx is not None:
+        await ctx.session.send_tool_list_changed()
+
     return f"Registered {len(tools)} {product} tools."
 
 
 @mcp.tool()
-async def load_network_tools() -> str:
+async def load_network_tools(ctx: Context) -> str:
     """Load all UniFi Network management tools (devices, clients, firewall, WiFi, VPN, topology, and more)."""
-    return await _load_product("network")
+    return await _load_product("network", ctx)
 
 
 @mcp.tool()
-async def load_protect_tools() -> str:
+async def load_protect_tools(ctx: Context) -> str:
     """Load UniFi Protect tools (cameras, motion events, recordings, smart detection)."""
-    return await _load_product("protect")
+    return await _load_product("protect", ctx)
 
 
 @mcp.tool()
-async def load_access_tools() -> str:
+async def load_access_tools(ctx: Context) -> str:
     """Load UniFi Access tools (door control, NFC/PIN credentials, visitor passes, access policies)."""
-    return await _load_product("access")
+    return await _load_product("access", ctx)
 
 
 @mcp.tool()
@@ -112,7 +120,7 @@ async def get_server_info() -> dict:
     """Get server status including loaded products and tool counts."""
     return {
         "server": "chris2ao-unifi-mcp",
-        "version": "0.1.0",
+        "version": "0.2.1",
         "console": config.unifi_host,
         "site": config.unifi_site,
         "products": registry.get_summary(),
