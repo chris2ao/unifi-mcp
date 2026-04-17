@@ -1,0 +1,60 @@
+[project]
+name = "chris2ao-unifi-mcp"
+version = "0.2.0"
+description = "Unified UniFi MCP server (Network + Protect) for Claude Code. API-key auth, lazy loading per product, preview-confirm safety model."
+readme = "README.md"
+license = "MIT"
+requires-python = ">=3.12"
+authors = [{ name = "Chris Johnson", email = "chris2ao@gmail.com" }]
+keywords = ["unifi", "mcp", "networking", "protect", "claude", "fastmcp"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: System Administrators",
+    "License :: OSI Approved :: MIT License",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: System :: Networking",
+]
+
+dependencies = [
+    "fastmcp>=2.0",
+    "httpx>=0.27",
+    "pydantic>=2.0",
+    "pydantic-settings>=2.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=0.23",
+    "pytest-cov>=5.0",
+    "respx>=0.21",
+]
+
+[project.scripts]
+chris2ao-unifi-mcp = "unifi_mcp.server:main"
+
+[project.urls]
+Homepage = "https://github.com/chris2ao/unifi-mcp"
+Repository = "https://github.com/chris2ao/unifi-mcp"
+Issues = "https://github.com/chris2ao/unifi-mcp/issues"
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/unifi_mcp"]
+
+[tool.pytest.ini_options]
+asyncio_mode = "auto"
+testpaths = ["tests"]
+markers = [
+    "integration: requires live UniFi console",
+]
+
+[tool.coverage.run]
+source = ["unifi_mcp"]
+
+[tool.coverage.report]
+fail_under = 80

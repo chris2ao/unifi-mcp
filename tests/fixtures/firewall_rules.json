@@ -1,0 +1,30 @@
+{
+  "meta": {"rc": "ok"},
+  "data": [
+    {
+      "_id": "fw001",
+      "name": "Block IoT to LAN",
+      "enabled": true,
+      "action": "drop",
+      "protocol": "all",
+      "src_address": "192.168.10.0/24",
+      "dst_address": "192.168.1.0/24",
+      "rule_index": 2000,
+      "ruleset": "LAN_IN",
+      "site_id": "default"
+    },
+    {
+      "_id": "fw002",
+      "name": "Allow DNS",
+      "enabled": true,
+      "action": "accept",
+      "protocol": "tcp_udp",
+      "src_address": "",
+      "dst_address": "",
+      "dst_port": "53",
+      "rule_index": 1000,
+      "ruleset": "LAN_IN",
+      "site_id": "default"
+    }
+  ]
+}

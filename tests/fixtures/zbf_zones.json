@@ -1,0 +1,25 @@
+{
+  "data": [
+    {
+      "_id": "zone001",
+      "name": "Internal",
+      "description": "Internal trusted zone",
+      "networks": ["net001", "net002"],
+      "site_id": "default"
+    },
+    {
+      "_id": "zone002",
+      "name": "Guest",
+      "description": "Guest network zone",
+      "networks": ["net003"],
+      "site_id": "default"
+    },
+    {
+      "_id": "zone003",
+      "name": "External",
+      "description": "WAN zone",
+      "networks": [],
+      "site_id": "default"
+    }
+  ]
+}

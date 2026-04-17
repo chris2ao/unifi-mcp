@@ -1,0 +1,48 @@
+{
+  "meta": {"rc": "ok"},
+  "data": [
+    {
+      "_id": "gw001",
+      "mac": "CC:DD:EE:FF:00:11",
+      "name": "UDM-Pro",
+      "model": "UDM-Pro",
+      "type": "ugw",
+      "uplink": {},
+      "port_table": [
+        {"port_idx": 1, "name": "WAN", "speed": 1000, "is_uplink": true},
+        {"port_idx": 9, "name": "LAN 1", "speed": 10000, "is_uplink": false}
+      ]
+    },
+    {
+      "_id": "def456",
+      "mac": "66:77:88:99:AA:BB",
+      "name": "Living Room Switch",
+      "model": "USW-Lite-16-PoE",
+      "type": "usw",
+      "uplink": {
+        "uplink_mac": "CC:DD:EE:FF:00:11",
+        "uplink_device_name": "UDM-Pro",
+        "type": "wire",
+        "speed": 10000
+      },
+      "port_table": [
+        {"port_idx": 1, "name": "Port 1", "speed": 1000, "is_uplink": false},
+        {"port_idx": 16, "name": "SFP+", "speed": 10000, "is_uplink": true}
+      ]
+    },
+    {
+      "_id": "abc123",
+      "mac": "00:11:22:33:44:55",
+      "name": "Office AP",
+      "model": "U6-Pro",
+      "type": "uap",
+      "uplink": {
+        "uplink_mac": "66:77:88:99:AA:BB",
+        "uplink_device_name": "Living Room Switch",
+        "type": "wire",
+        "speed": 1000
+      },
+      "port_table": []
+    }
+  ]
+}

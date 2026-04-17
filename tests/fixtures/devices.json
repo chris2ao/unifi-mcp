@@ -1,0 +1,57 @@
+{
+  "meta": {"rc": "ok"},
+  "data": [
+    {
+      "_id": "abc123",
+      "mac": "00:11:22:33:44:55",
+      "name": "Office AP",
+      "model": "U6-Pro",
+      "type": "uap",
+      "ip": "192.168.1.10",
+      "version": "7.1.68",
+      "upgradable": false,
+      "state": 1,
+      "adopted": true,
+      "uptime": 604800,
+      "num_sta": 8,
+      "tx_bytes": 1073741824,
+      "rx_bytes": 2147483648,
+      "system-stats": {"cpu": "12.5", "mem": "42.3"},
+      "port_table": [],
+      "uplink": {
+        "uplink_mac": "66:77:88:99:AA:BB",
+        "uplink_device_name": "Living Room Switch",
+        "type": "wire",
+        "speed": 1000
+      }
+    },
+    {
+      "_id": "def456",
+      "mac": "66:77:88:99:AA:BB",
+      "name": "Living Room Switch",
+      "model": "USW-Lite-16-PoE",
+      "type": "usw",
+      "ip": "192.168.1.11",
+      "version": "7.0.50",
+      "upgradable": true,
+      "state": 1,
+      "adopted": true,
+      "uptime": 1209600,
+      "num_sta": 0,
+      "tx_bytes": 536870912,
+      "rx_bytes": 268435456,
+      "system-stats": {"cpu": "5.1", "mem": "35.0"},
+      "port_table": [
+        {"port_idx": 1, "name": "Port 1", "enable": true, "speed": 1000, "is_uplink": false, "poe_mode": "auto", "poe_power": "6.2"},
+        {"port_idx": 2, "name": "Port 2", "enable": true, "speed": 100, "is_uplink": false, "poe_mode": "off", "poe_power": "0"},
+        {"port_idx": 16, "name": "SFP+", "enable": true, "speed": 10000, "is_uplink": true, "poe_mode": "off", "poe_power": "0"}
+      ],
+      "uplink": {
+        "uplink_mac": "CC:DD:EE:FF:00:11",
+        "uplink_device_name": "UDM-Pro",
+        "type": "wire",
+        "speed": 10000
+      }
+    }
+  ]
+}

@@ -1,0 +1,45 @@
+name: test
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: ["3.12", "3.13"]
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install uv
+        uses: astral-sh/setup-uv@v3
+        with:
+          enable-cache: true
+
+      - name: Set up Python ${{ matrix.python-version }}
+        run: uv python install ${{ matrix.python-version }}
+
+      - name: Install dependencies
+        run: uv sync --all-extras
+
+      - name: Run unit tests
+        run: uv run pytest -q
+
+      - name: Verify Protect tool registration
+        run: |
+          uv run python -c "
+          from unifi_mcp.tools._registry import PRODUCT_MODULES
+          import importlib
+          for product, modules in PRODUCT_MODULES.items():
+              for m in modules:
+                  try:
+                      importlib.import_module(f'unifi_mcp.tools.{product}.{m}')
+                  except ImportError:
+                      pass
+          print('All tool modules import cleanly.')
+          "

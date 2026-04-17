@@ -1,0 +1,52 @@
+{
+  "data": [
+    {
+      "flow_id": "flow001",
+      "src_ip": "192.168.1.100",
+      "dst_ip": "142.250.80.46",
+      "protocol": "tcp",
+      "src_port": 54321,
+      "dst_port": 443,
+      "app_name": "Google",
+      "app_id": "app_google",
+      "bytes_sent": 1048576,
+      "bytes_received": 5242880,
+      "packets_sent": 1024,
+      "packets_received": 4096,
+      "start_time": 1713100000000,
+      "duration": 300
+    },
+    {
+      "flow_id": "flow002",
+      "src_ip": "192.168.1.101",
+      "dst_ip": "31.13.65.36",
+      "protocol": "tcp",
+      "src_port": 12345,
+      "dst_port": 443,
+      "app_name": "Facebook",
+      "app_id": "app_facebook",
+      "bytes_sent": 524288,
+      "bytes_received": 2097152,
+      "packets_sent": 512,
+      "packets_received": 2048,
+      "start_time": 1713100100000,
+      "duration": 120
+    },
+    {
+      "flow_id": "flow003",
+      "src_ip": "192.168.1.100",
+      "dst_ip": "8.8.8.8",
+      "protocol": "udp",
+      "src_port": 60000,
+      "dst_port": 53,
+      "app_name": "DNS",
+      "app_id": "app_dns",
+      "bytes_sent": 4096,
+      "bytes_received": 8192,
+      "packets_sent": 32,
+      "packets_received": 32,
+      "start_time": 1713100200000,
+      "duration": 1
+    }
+  ]
+}

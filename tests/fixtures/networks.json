@@ -1,0 +1,45 @@
+{
+  "meta": {"rc": "ok"},
+  "data": [
+    {
+      "_id": "net001",
+      "name": "Default",
+      "purpose": "corporate",
+      "ip_subnet": "192.168.1.0/24",
+      "vlan_enabled": false,
+      "dhcpd_enabled": true,
+      "dhcpd_start": "192.168.1.100",
+      "dhcpd_stop": "192.168.1.254",
+      "domain_name": "localdomain",
+      "networkgroup": "LAN",
+      "site_id": "default"
+    },
+    {
+      "_id": "net002",
+      "name": "IoT",
+      "purpose": "corporate",
+      "ip_subnet": "192.168.10.0/24",
+      "vlan_enabled": true,
+      "vlan": 10,
+      "dhcpd_enabled": true,
+      "dhcpd_start": "192.168.10.100",
+      "dhcpd_stop": "192.168.10.254",
+      "domain_name": "iot.local",
+      "networkgroup": "LAN",
+      "site_id": "default"
+    },
+    {
+      "_id": "net003",
+      "name": "Guest",
+      "purpose": "guest",
+      "ip_subnet": "192.168.20.0/24",
+      "vlan_enabled": true,
+      "vlan": 20,
+      "dhcpd_enabled": true,
+      "dhcpd_start": "192.168.20.100",
+      "dhcpd_stop": "192.168.20.254",
+      "networkgroup": "LAN",
+      "site_id": "default"
+    }
+  ]
+}

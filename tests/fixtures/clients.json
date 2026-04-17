@@ -1,0 +1,58 @@
+{
+  "meta": {"rc": "ok"},
+  "data": [
+    {
+      "_id": "cli001",
+      "mac": "AA:BB:CC:DD:EE:01",
+      "hostname": "MacBook-Pro",
+      "ip": "192.168.1.100",
+      "name": "Chris Laptop",
+      "network": "Default",
+      "network_id": "net001",
+      "is_wired": false,
+      "is_guest": false,
+      "uptime": 86400,
+      "tx_bytes": 5368709120,
+      "rx_bytes": 10737418240,
+      "signal": -45,
+      "satisfaction": 98,
+      "essid": "HomeWiFi",
+      "blocked": false
+    },
+    {
+      "_id": "cli002",
+      "mac": "AA:BB:CC:DD:EE:02",
+      "hostname": "iPhone-15",
+      "ip": "192.168.1.101",
+      "name": "",
+      "network": "Default",
+      "network_id": "net001",
+      "is_wired": false,
+      "is_guest": false,
+      "uptime": 3600,
+      "tx_bytes": 104857600,
+      "rx_bytes": 209715200,
+      "signal": -62,
+      "satisfaction": 85,
+      "essid": "HomeWiFi",
+      "blocked": false
+    },
+    {
+      "_id": "cli003",
+      "mac": "AA:BB:CC:DD:EE:03",
+      "hostname": "NAS-Server",
+      "ip": "192.168.1.50",
+      "name": "Synology NAS",
+      "network": "Default",
+      "network_id": "net001",
+      "is_wired": true,
+      "is_guest": false,
+      "uptime": 604800,
+      "tx_bytes": 53687091200,
+      "rx_bytes": 107374182400,
+      "signal": 0,
+      "satisfaction": 100,
+      "blocked": false
+    }
+  ]
+}

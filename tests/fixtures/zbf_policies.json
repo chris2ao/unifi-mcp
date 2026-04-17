@@ -1,0 +1,24 @@
+{
+  "data": [
+    {
+      "_id": "pol001",
+      "name": "Allow Internal to External",
+      "source_zone_id": "zone001",
+      "destination_zone_id": "zone003",
+      "action": "ALLOW",
+      "protocol": "all",
+      "enabled": true,
+      "index": 1000
+    },
+    {
+      "_id": "pol002",
+      "name": "Block Guest to Internal",
+      "source_zone_id": "zone002",
+      "destination_zone_id": "zone001",
+      "action": "DENY",
+      "protocol": "all",
+      "enabled": true,
+      "index": 2000
+    }
+  ]
+}

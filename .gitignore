@@ -1,0 +1,52 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.egg-info/
+*.egg
+dist/
+build/
+.eggs/
+
+# Testing
+.pytest_cache/
+.coverage
+.coverage.*
+htmlcov/
+coverage.xml
+*.cover
+
+# Virtual environments
+.venv/
+venv/
+env/
+
+# Secrets and env files
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+*.p12
+secrets.yml
+secrets.env
+
+# IDE / editor
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Direnv
+.direnv/
+
+# uv
+.uv-cache/
+
+# MCP / Claude Code local overrides
+.claude/settings.local.json

@@ -1,0 +1,19 @@
+{
+  "meta": {"rc": "ok"},
+  "data": [
+    {
+      "_id": "fwg001",
+      "name": "Trusted Servers",
+      "group_type": "address-group",
+      "group_members": ["192.168.1.10", "192.168.1.11", "192.168.1.12"],
+      "site_id": "default"
+    },
+    {
+      "_id": "fwg002",
+      "name": "Web Ports",
+      "group_type": "port-group",
+      "group_members": ["80", "443", "8080"],
+      "site_id": "default"
+    }
+  ]
+}

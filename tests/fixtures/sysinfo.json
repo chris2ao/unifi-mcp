@@ -1,0 +1,13 @@
+{
+  "meta": {"rc": "ok"},
+  "data": [{
+    "timezone": "America/New_York",
+    "autobackup": true,
+    "build": "atag_8.6.9_12345",
+    "hostname": "UDM-Pro",
+    "name": "Home Network",
+    "version": "8.6.9",
+    "update_available": false,
+    "uptime": 1209600
+  }]
+}

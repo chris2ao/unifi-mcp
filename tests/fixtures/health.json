@@ -1,0 +1,9 @@
+{
+  "meta": {"rc": "ok"},
+  "data": [
+    {"subsystem": "wan", "status": "ok", "num_gw": 1},
+    {"subsystem": "wlan", "status": "ok", "num_ap": 3, "num_sta": 12},
+    {"subsystem": "lan", "status": "ok", "num_sw": 2},
+    {"subsystem": "vpn", "status": "ok"}
+  ]
+}

@@ -1,0 +1,41 @@
+{
+  "meta": {"rc": "ok"},
+  "data": [
+    {
+      "_id": "wlan001",
+      "name": "HomeWiFi",
+      "enabled": true,
+      "security": "wpapsk",
+      "wlan_band": "both",
+      "networkconf_id": "net001",
+      "hide_ssid": false,
+      "is_guest": false,
+      "num_sta": 15,
+      "site_id": "default"
+    },
+    {
+      "_id": "wlan002",
+      "name": "IoT_Network",
+      "enabled": true,
+      "security": "wpapsk",
+      "wlan_band": "2g",
+      "networkconf_id": "net002",
+      "hide_ssid": false,
+      "is_guest": false,
+      "num_sta": 8,
+      "site_id": "default"
+    },
+    {
+      "_id": "wlan003",
+      "name": "Guest_WiFi",
+      "enabled": false,
+      "security": "open",
+      "wlan_band": "both",
+      "networkconf_id": "net003",
+      "hide_ssid": false,
+      "is_guest": true,
+      "num_sta": 0,
+      "site_id": "default"
+    }
+  ]
+}
