@@ -375,11 +375,18 @@ async def test_adopt_device_confirmed(mock_client):
 async def test_forget_device_confirmed(mock_client):
     from unifi_mcp.tools.network.devices import forget_device
 
+    # forget_device probes /stat/device/<mac> first to choose devmgr vs sitemgr.
+    respx.get(f"{BASE}/proxy/network/api/s/default/stat/device/00:11:22:33:44:55").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{"_id": "x", "mac": "00:11:22:33:44:55", "state": 1}]})
+    )
+    # Online device -> devmgr; mock a non-empty data so the silent-no-op fallback does not trigger.
     respx.post(f"{BASE}/proxy/network/api/s/default/cmd/devmgr").mock(
-        return_value=httpx.Response(200, json=OK_RESPONSE)
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{"_id": "x"}]})
     )
     result = await forget_device(mock_client, mac="00:11:22:33:44:55", confirm=True)
     assert result["executed"] is True
+    assert result["device_state"] == "online"
+    assert result["endpoint"].endswith("/cmd/devmgr")
 
 
 @respx.mock

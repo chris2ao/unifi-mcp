@@ -104,6 +104,91 @@ async def test_forget_device_preview(mock_client):
 
 @respx.mock
 @pytest.mark.asyncio
+async def test_forget_device_online_uses_devmgr(mock_client):
+    """Online devices route to /cmd/devmgr so the controller can send unadopt."""
+    from unifi_mcp.tools.network.devices import forget_device
+
+    respx.get("https://192.168.1.1/proxy/network/api/s/default/stat/device/aa:bb:cc:dd:ee:01").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{"_id": "x", "mac": "aa:bb:cc:dd:ee:01", "state": 1}]})
+    )
+    devmgr_route = respx.post("https://192.168.1.1/proxy/network/api/s/default/cmd/devmgr").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{"_id": "x", "mac": "aa:bb:cc:dd:ee:01"}]})
+    )
+    result = await forget_device(mock_client, mac="aa:bb:cc:dd:ee:01", confirm=True)
+    assert result["executed"] is True
+    assert result["device_state"] == "online"
+    assert result["endpoint"].endswith("/cmd/devmgr")
+    assert result["retried_on_sitemgr"] is False
+    assert devmgr_route.called
+    posted = json.loads(devmgr_route.calls.last.request.content)
+    assert posted == {"cmd": "delete-device", "mac": "aa:bb:cc:dd:ee:01"}
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_forget_device_offline_uses_sitemgr(mock_client):
+    """Offline devices route directly to /cmd/sitemgr (controller-side purge)."""
+    from unifi_mcp.tools.network.devices import forget_device
+
+    respx.get("https://192.168.1.1/proxy/network/api/s/default/stat/device/aa:bb:cc:dd:ee:02").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{"_id": "x", "mac": "aa:bb:cc:dd:ee:02", "state": 0}]})
+    )
+    devmgr_route = respx.post("https://192.168.1.1/proxy/network/api/s/default/cmd/devmgr").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": []})
+    )
+    sitemgr_route = respx.post("https://192.168.1.1/proxy/network/api/s/default/cmd/sitemgr").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{"_id": "x", "mac": "aa:bb:cc:dd:ee:02"}]})
+    )
+    result = await forget_device(mock_client, mac="aa:bb:cc:dd:ee:02", confirm=True)
+    assert result["device_state"] == "offline"
+    assert result["endpoint"].endswith("/cmd/sitemgr")
+    assert result["retried_on_sitemgr"] is False
+    assert sitemgr_route.called
+    assert not devmgr_route.called  # offline path bypasses devmgr entirely
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_forget_device_devmgr_silent_noop_retries_on_sitemgr(mock_client):
+    """When devmgr returns rc=ok with empty data, retry on sitemgr."""
+    from unifi_mcp.tools.network.devices import forget_device
+
+    respx.get("https://192.168.1.1/proxy/network/api/s/default/stat/device/aa:bb:cc:dd:ee:03").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{"_id": "x", "mac": "aa:bb:cc:dd:ee:03", "state": 1}]})
+    )
+    devmgr_route = respx.post("https://192.168.1.1/proxy/network/api/s/default/cmd/devmgr").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": []})
+    )
+    sitemgr_route = respx.post("https://192.168.1.1/proxy/network/api/s/default/cmd/sitemgr").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{"_id": "x", "mac": "aa:bb:cc:dd:ee:03"}]})
+    )
+    result = await forget_device(mock_client, mac="aa:bb:cc:dd:ee:03", confirm=True)
+    assert result["retried_on_sitemgr"] is True
+    assert result["endpoint"].endswith("/cmd/sitemgr")
+    assert devmgr_route.called
+    assert sitemgr_route.called
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_forget_device_state_unknown_defaults_to_sitemgr(mock_client):
+    """If the state probe fails (device gone from stat/device), default to sitemgr."""
+    from unifi_mcp.tools.network.devices import forget_device
+
+    respx.get("https://192.168.1.1/proxy/network/api/s/default/stat/device/aa:bb:cc:dd:ee:04").mock(
+        return_value=httpx.Response(404, json={"meta": {"rc": "error", "msg": "api.err.NotFound"}, "data": []})
+    )
+    sitemgr_route = respx.post("https://192.168.1.1/proxy/network/api/s/default/cmd/sitemgr").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{"_id": "x", "mac": "aa:bb:cc:dd:ee:04"}]})
+    )
+    result = await forget_device(mock_client, mac="aa:bb:cc:dd:ee:04", confirm=True)
+    assert result["device_state"] == "unknown"
+    assert result["endpoint"].endswith("/cmd/sitemgr")
+    assert sitemgr_route.called
+
+
+@respx.mock
+@pytest.mark.asyncio
 async def test_locate_device(mock_client):
     from unifi_mcp.tools.network.devices import locate_device
 
