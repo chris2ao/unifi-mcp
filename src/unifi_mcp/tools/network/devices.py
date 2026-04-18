@@ -1,6 +1,7 @@
 """Device management tools: list, get, restart, adopt, forget, locate, RF scan, firmware, rename, stats, ports, uplinks."""
 
 from unifi_mcp.auth.client import UnifiClient
+from unifi_mcp.errors import UnifiError
 
 
 def _format_bytes(b: int) -> str:
@@ -100,8 +101,49 @@ async def adopt_device(client: UnifiClient, mac: str, confirm: bool = False) -> 
     return {"executed": True, "action": "adopt_device", "mac": mac, "response": response}
 
 
+async def _probe_device_state(client: UnifiClient, mac: str) -> str:
+    """Look up `state` for a device by MAC. Returns "online", "offline", or "unknown".
+
+    Used by forget_device to decide between /cmd/devmgr and /cmd/sitemgr.
+    """
+    try:
+        response = await client.get(f"/proxy/network/api/s/{{site}}/stat/device/{mac}")
+    except UnifiError:
+        return "unknown"
+    data = response.get("data") if isinstance(response, dict) else None
+    if not data:
+        return "unknown"
+    return "online" if data[0].get("state") == 1 else "offline"
+
+
+def _is_silent_noop(response: dict) -> bool:
+    """Detect the UniFi "I parsed your request but did nothing" response pattern.
+
+    A successful UniFi mutation returns `data: [<modified resource>]`. When the
+    controller silently aborts (e.g., devmgr called against an offline device),
+    it returns `meta.rc: ok` paired with an empty `data: []` array.
+    """
+    if not isinstance(response, dict):
+        return False
+    if response.get("meta", {}).get("rc") != "ok":
+        return False
+    return not response.get("data")
+
+
 async def forget_device(client: UnifiClient, mac: str, confirm: bool = False) -> dict:
-    """Remove a device from the network. Requires confirm=True after previewing."""
+    """Remove a device from the network. Requires confirm=True after previewing.
+
+    Auto-routes based on device state:
+      - online devices hit `/cmd/devmgr` (controller sends an unadopt before purging).
+      - offline devices hit `/cmd/sitemgr` (controller-side purge without contacting
+        the device). This matches the Web UI's "Forget" button behavior on offline
+        devices.
+
+    Defensive fallback: if `/cmd/devmgr` returns the silent-no-op pattern
+    (`meta.rc: ok` with empty `data`), the call is retried on `/cmd/sitemgr`. The
+    response includes `endpoint`, `device_state`, and `retried_on_sitemgr` so
+    callers can confirm which path actually executed.
+    """
     if not confirm:
         return {
             "preview": True,
@@ -109,12 +151,31 @@ async def forget_device(client: UnifiClient, mac: str, confirm: bool = False) ->
             "mac": mac,
             "message": f"Will forget device {mac}. This removes it from the controller. Call again with confirm=True to execute.",
         }
-    response = await client.post(
-        "/proxy/network/api/s/{site}/cmd/devmgr",
-        json={"cmd": "delete", "mac": mac},
-    )
+
+    state = await _probe_device_state(client, mac)
+    devmgr = "/proxy/network/api/s/{site}/cmd/devmgr"
+    sitemgr = "/proxy/network/api/s/{site}/cmd/sitemgr"
+    payload = {"cmd": "delete-device", "mac": mac}
+
+    endpoint = sitemgr if state != "online" else devmgr
+    response = await client.post(endpoint, json=payload)
+
+    retried = False
+    if endpoint == devmgr and _is_silent_noop(response):
+        endpoint = sitemgr
+        response = await client.post(endpoint, json=payload)
+        retried = True
+
     client.invalidate_cache("devices")
-    return {"executed": True, "action": "forget_device", "mac": mac, "response": response}
+    return {
+        "executed": True,
+        "action": "forget_device",
+        "mac": mac,
+        "endpoint": endpoint,
+        "device_state": state,
+        "retried_on_sitemgr": retried,
+        "response": response,
+    }
 
 
 async def locate_device(client: UnifiClient, mac: str, enabled: bool = True) -> dict:
