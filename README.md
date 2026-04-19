@@ -1,5 +1,11 @@
 # unifi-mcp
 
+[![test](https://github.com/chris2ao/unifi-mcp/actions/workflows/test.yml/badge.svg)](https://github.com/chris2ao/unifi-mcp/actions/workflows/test.yml)
+[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](./LICENSE)
+[![Python](https://img.shields.io/badge/python-3.12%2B-blue.svg)](https://www.python.org/downloads/)
+[![MCP](https://img.shields.io/badge/MCP-compatible-6E56CF.svg)](https://modelcontextprotocol.io/)
+[![UniFi](https://img.shields.io/badge/UniFi-Network%20%7C%20Protect-0559C9.svg)](https://ui.com/)
+
 An MCP server for UniFi Network and Protect, built on FastMCP and httpx. API-key-only auth, lazy loading per product, and a preview-confirm safety model for destructive operations.
 
 ## What this is

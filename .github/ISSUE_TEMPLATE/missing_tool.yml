@@ -1,0 +1,48 @@
+name: Missing tool
+description: Request wrapping of a specific UniFi API endpoint
+title: "[missing-tool]: "
+labels: ["missing-tool", "enhancement"]
+body:
+  - type: input
+    id: endpoint
+    attributes:
+      label: UniFi API endpoint
+      description: Exact path and method
+      placeholder: "POST /proxy/network/v2/api/site/default/..."
+    validations:
+      required: true
+  - type: dropdown
+    id: product
+    attributes:
+      label: Product
+      options:
+        - Network
+        - Protect
+        - Access
+    validations:
+      required: true
+  - type: input
+    id: proposed-name
+    attributes:
+      label: Proposed tool name
+      placeholder: "create_firewall_zone"
+    validations:
+      required: true
+  - type: textarea
+    id: purpose
+    attributes:
+      label: Purpose
+      description: What operational problem does exposing this endpoint solve?
+    validations:
+      required: true
+  - type: checkboxes
+    id: destructive
+    attributes:
+      label: Safety model
+      options:
+        - label: This is a destructive operation and needs the preview-confirm flow.
+  - type: textarea
+    id: notes
+    attributes:
+      label: Implementation notes
+      description: Params, response shape, gotchas.
