@@ -1,6 +1,6 @@
 {
   "name": "unifi-mcp",
-  "version": "0.2.0",
+  "version": "0.3.1",
   "description": "Manage UniFi Network and Protect from Claude Code. 103 tools covering devices, clients, VLANs, firewall, ZBF, WiFi, VPN, topology, cameras, and more. API-key-only auth, lazy loading per product, preview-confirm safety flow for destructive operations.",
   "author": {
     "name": "chris2ao",

@@ -1,6 +1,6 @@
 [project]
 name = "chris2ao-unifi-mcp"
-version = "0.3.0"
+version = "0.3.1"
 description = "Unified UniFi MCP server (Network + Protect) for Claude Code. API-key auth, lazy loading per product, preview-confirm safety model."
 readme = "README.md"
 license = "MIT"

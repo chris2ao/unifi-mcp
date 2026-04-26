@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.3.1] - 2026-04-26
+
+### Fixed
+
+- `marketplace.json` plugin source path now uses `"./"` instead of `"."`. The bare `"."` form fails Claude Code marketplace schema validation with `Invalid schema: plugins.0.source: Invalid input`, so `/plugin marketplace add https://github.com/chris2ao/unifi-mcp.git` would refuse to load the catalog. The official Claude Code marketplace docs only document `"./"` or explicit subpaths for relative sources. Thanks to [@erikankrom](https://github.com/erikankrom) for catching this and submitting [#3](https://github.com/chris2ao/unifi-mcp/pull/3).
+
+### Changed
+
+- Bumped `.claude-plugin/plugin.json` version from `0.2.0` to `0.3.1` to match `pyproject.toml` (it had drifted out of sync since the v0.3.0 release).
+
 ## [0.3.0] - 2026-04-18
 
 ### Fixed
@@ -51,6 +61,7 @@ This release was driven by a real-world incident on 2026-04-18 where an offline 
 - Lazy per-product tool loading to keep the initial tool list small.
 - Claude Code plugin bundle with installation guide, setup instructions, and API reference.
 
+[0.3.1]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.3.1
 [0.3.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.3.0
 [0.2.1]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.2.1
 [0.2.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.2.0
