@@ -1,0 +1,30 @@
+{
+  "data": [
+    {
+      "_id": "tr_block_dns",
+      "description": "Block non-Pi-hole DNS - Default",
+      "action": "BLOCK",
+      "enabled": true,
+      "matching_target": "INTERNET",
+      "target_devices": [{"type": "NETWORK", "network_id": "65580799064cbb0b2e692e27"}],
+      "ip_addresses": [],
+      "ip_ranges": [],
+      "domains": [],
+      "regions": [],
+      "app_category_ids": [],
+      "app_ids": [],
+      "network_ids": [],
+      "schedule": {"mode": "ALWAYS", "repeat_on_days": [], "time_all_day": false},
+      "bandwidth_limit": {"enabled": false, "download_limit_kbps": 0, "upload_limit_kbps": 0}
+    },
+    {
+      "_id": "tr_kid_block",
+      "description": "Kid network bedtime",
+      "action": "BLOCK",
+      "enabled": false,
+      "matching_target": "INTERNET",
+      "target_devices": [{"type": "CLIENT", "client_mac": "aa:bb:cc:dd:ee:ff"}],
+      "schedule": {"mode": "CUSTOM", "repeat_on_days": ["sun", "mon"], "time_all_day": false}
+    }
+  ]
+}

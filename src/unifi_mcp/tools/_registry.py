@@ -6,8 +6,8 @@ PRODUCT_MODULES: dict[str, list[str]] = {
     "network": [
         "system", "devices", "clients", "networks", "firewall", "zbf",
         "wifi", "vpn", "port_forwarding", "dpi", "hotspot", "mac_acl",
-        "qos", "topology", "traffic_flows", "radius", "port_profiles",
-        "backups", "webhooks",
+        "qos", "topology", "traffic_flows", "traffic_rules",
+        "radius", "port_profiles", "backups", "webhooks",
     ],
     "protect": [
         "cameras", "events", "recordings", "devices",
