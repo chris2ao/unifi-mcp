@@ -5,6 +5,30 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.0] - 2026-04-27
+
+### Added
+
+- `traffic_rules` tools (six total): `list_traffic_rules`, `get_traffic_rule`, `create_traffic_rule`, `update_traffic_rule`, `delete_traffic_rule`, `toggle_traffic_rule`. Wraps the UniFi v2 endpoint `/proxy/network/v2/api/site/{site}/trafficrules`. The create/update tools accept the full rule body as a free-form dict because the schema is rich and version-dependent; callers should fetch a similar existing rule via `list_traffic_rules` to discover the schema before constructing a new one.
+- `tests/fixtures/traffic_rules.json` and `tests/unit/test_network_traffic_rules.py` covering the new tools (13 tests, all preview/confirmed paths plus the "not found" branch on `get_traffic_rule`).
+
+### Fixed
+
+- `auth.client._request` now tolerates an empty 2xx response body, treating it as an empty success dict. UniFi's v2 `DELETE /trafficrules/<id>` returns 200 with no Content-Type header and an empty body; previously this raised `UNEXPECTED_RESPONSE` and surfaced as a delete failure even though the rule was successfully removed.
+
+### Changed
+
+- Bumped `.claude-plugin/plugin.json` version from `0.3.1` to `0.4.0` to match `pyproject.toml`.
+
+### Schema notes (UniFi v2 trafficrules)
+
+Discovered while building these tools and worth documenting for callers:
+
+- The rule label is `description`, not `name`. UniFi silently drops `name` on create.
+- There is **no** `ports` field. Traffic Rules cannot filter by destination port — they match by `matching_target` (INTERNET / DOMAIN / IP / REGION / APP_CATEGORY / INTERNAL). For port-specific rules, use ZBF firewall policies (`/v2/api/site/{site}/firewall-policies`) instead.
+- `target_devices` does not support an `exclude` flag. UniFi normalizes any `{"exclude": true}` field away on persist, so you cannot express "all devices on this network EXCEPT this client" in a single rule.
+- `GET /trafficrules/{id}` returns 405. `get_traffic_rule` and `toggle_traffic_rule` fetch the collection and filter locally as a workaround.
+
 ## [0.3.1] - 2026-04-26
 
 ### Fixed
@@ -61,6 +85,7 @@ This release was driven by a real-world incident on 2026-04-18 where an offline 
 - Lazy per-product tool loading to keep the initial tool list small.
 - Claude Code plugin bundle with installation guide, setup instructions, and API reference.
 
+[0.4.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.4.0
 [0.3.1]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.3.1
 [0.3.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.3.0
 [0.2.1]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.2.1

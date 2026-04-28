@@ -164,6 +164,11 @@ class UnifiClient:
 
             content_type = response.headers.get("content-type", "")
             if "application/json" not in content_type:
+                # UniFi v2 DELETE endpoints return 200 with an empty body and no
+                # JSON content-type. Treat any empty 2xx response as success
+                # rather than failing the caller.
+                if not response.content:
+                    return {}
                 raise UnifiError(
                     ErrorCategory.UNEXPECTED_RESPONSE,
                     f"{method} {path} returned non-JSON content-type '{content_type}' "
