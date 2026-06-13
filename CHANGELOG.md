@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.4.1] - 2026-06-13
+
+### Fixed
+
+- `list_port_forwards` now surfaces the forward target IP. The controller stores it in the `fwd` field (not `fwd_ip`) on UniFi Network 9.x, so a correctly-configured rule previously reported `fwd_ip: ""` and looked broken. Reads now prefer `fwd` and fall back to `fwd_ip`. (#5)
+- `update_port_forward` no longer silently no-ops. The `/rest/portforward/{id}` PUT ignores a partial body (returns HTTP 200 with an empty `data` array but persists nothing). The tool now GETs the existing rule, merges the requested `updates` onto the full object, and PUTs the complete rule. (#5)
+- `update_port_forward` now reports an empty `data` array as `executed: false` with an explanatory error instead of `executed: true`, so a non-persisting write is no longer indistinguishable from success. A missing rule id returns `executed: false` with a "not found" error. (#5)
+
+### Added
+
+- `update_port_forward` accepts the forward target as either `fwd` or `fwd_ip` in `updates`; both normalize to the controller's `fwd` field.
+- `create_port_forward` gains an optional `pfwd_interface` parameter to bind a rule to a specific WAN interface on dual-WAN setups. `list_port_forwards` now includes `pfwd_interface` in its output. (#5)
+
 ## [0.4.0] - 2026-04-27
 
 ### Added
