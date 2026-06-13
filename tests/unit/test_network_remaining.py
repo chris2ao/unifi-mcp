@@ -210,6 +210,22 @@ async def test_list_port_forwards(mock_client):
 
 @respx.mock
 @pytest.mark.asyncio
+async def test_list_port_forwards_reads_fwd_field(mock_client):
+    """Network 9.x stores the forward target in `fwd`; surface it as fwd_ip."""
+    from unifi_mcp.tools.network.port_forwarding import list_port_forwards
+
+    respx.get(f"{BASE}/proxy/network/api/s/default/rest/portforward").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [
+            {"_id": "pf001", "name": "qBittorent", "fwd": "10.0.0.50", "fwd_port": "58027",
+             "dst_port": "58027", "proto": "tcp_udp", "enabled": True}
+        ]})
+    )
+    result = await list_port_forwards(mock_client)
+    assert result[0]["fwd_ip"] == "10.0.0.50"
+
+
+@respx.mock
+@pytest.mark.asyncio
 async def test_create_port_forward_preview(mock_client):
     from unifi_mcp.tools.network.port_forwarding import create_port_forward
 

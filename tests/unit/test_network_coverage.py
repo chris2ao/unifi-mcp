@@ -323,11 +323,75 @@ async def test_update_port_forward_preview(mock_client):
 async def test_update_port_forward_confirmed(mock_client):
     from unifi_mcp.tools.network.port_forwarding import update_port_forward
 
+    existing = {
+        "_id": "pf001", "name": "Web Server", "fwd": "192.168.1.50",
+        "fwd_port": "80", "dst_port": "80", "proto": "tcp", "enabled": True,
+    }
+    respx.get(f"{BASE}/proxy/network/api/s/default/rest/portforward/pf001").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [existing]})
+    )
+    put_route = respx.put(f"{BASE}/proxy/network/api/s/default/rest/portforward/pf001").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{**existing, "enabled": False}]})
+    )
+    result = await update_port_forward(mock_client, rule_id="pf001", updates={"enabled": False}, confirm=True)
+    assert result["executed"] is True
+    # The full rule is merged and PUT, not just the partial updates.
+    import json as _json
+    sent = _json.loads(put_route.calls.last.request.content)
+    assert sent["fwd"] == "192.168.1.50"
+    assert sent["enabled"] is False
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_update_port_forward_fwd_ip_alias(mock_client):
+    """fwd_ip in updates normalizes to the controller's fwd field."""
+    from unifi_mcp.tools.network.port_forwarding import update_port_forward
+
+    existing = {"_id": "pf001", "name": "qB", "fwd": "10.0.0.1", "proto": "tcp_udp", "enabled": True}
+    respx.get(f"{BASE}/proxy/network/api/s/default/rest/portforward/pf001").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [existing]})
+    )
+    put_route = respx.put(f"{BASE}/proxy/network/api/s/default/rest/portforward/pf001").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [{**existing, "fwd": "10.0.0.50"}]})
+    )
+    result = await update_port_forward(mock_client, rule_id="pf001", updates={"fwd_ip": "10.0.0.50"}, confirm=True)
+    assert result["executed"] is True
+    import json as _json
+    sent = _json.loads(put_route.calls.last.request.content)
+    assert sent["fwd"] == "10.0.0.50"
+    assert "fwd_ip" not in sent
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_update_port_forward_empty_data_is_failure(mock_client):
+    """An empty data array (silent no-op) is reported as executed=False."""
+    from unifi_mcp.tools.network.port_forwarding import update_port_forward
+
+    existing = {"_id": "pf001", "name": "qB", "fwd": "10.0.0.50", "proto": "tcp", "enabled": True}
+    respx.get(f"{BASE}/proxy/network/api/s/default/rest/portforward/pf001").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [existing]})
+    )
     respx.put(f"{BASE}/proxy/network/api/s/default/rest/portforward/pf001").mock(
         return_value=httpx.Response(200, json=OK_RESPONSE)
     )
     result = await update_port_forward(mock_client, rule_id="pf001", updates={"enabled": False}, confirm=True)
-    assert result["executed"] is True
+    assert result["executed"] is False
+    assert "did not persist" in result["error"]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_update_port_forward_not_found(mock_client):
+    from unifi_mcp.tools.network.port_forwarding import update_port_forward
+
+    respx.get(f"{BASE}/proxy/network/api/s/default/rest/portforward/pf404").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": []})
+    )
+    result = await update_port_forward(mock_client, rule_id="pf404", updates={"enabled": False}, confirm=True)
+    assert result["executed"] is False
+    assert "not found" in result["error"]
 
 
 @respx.mock
