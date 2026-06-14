@@ -1,6 +1,11 @@
 """Client management tools: list, get, block, unblock, reconnect, alias, history, list_all."""
 
+import time
+
 from unifi_mcp.auth.client import UnifiClient
+
+# Default look-back for client history when no explicit range is given (30 days).
+_HISTORY_DEFAULT_LOOKBACK_MS = 30 * 24 * 60 * 60 * 1000
 
 
 def _format_bytes(b: int) -> str:
@@ -42,6 +47,10 @@ def _format_client(c: dict) -> dict:
         "tx_human": _format_bytes(c.get("tx_bytes", 0)),
         "rx_bytes": c.get("rx_bytes", 0),
         "rx_human": _format_bytes(c.get("rx_bytes", 0)),
+        # Wired clients carry their volume under wired-* counters; /stat/sta puts
+        # 0 in tx_bytes/rx_bytes for them. Surface both so callers can pick.
+        "wired_tx_bytes": c.get("wired-tx_bytes", 0),
+        "wired_rx_bytes": c.get("wired-rx_bytes", 0),
         "signal": c.get("signal", 0),
         "satisfaction": c.get("satisfaction", 0),
         "blocked": c.get("blocked", False),
@@ -134,11 +143,41 @@ async def list_all_clients(client: UnifiClient) -> list[dict]:
     ]
 
 
-async def get_client_history(client: UnifiClient, mac: str) -> list[dict]:
-    """Get hourly usage history for a client."""
+_HISTORY_INTERVALS = ("hourly", "daily")
+
+
+async def get_client_history(
+    client: UnifiClient,
+    mac: str,
+    start: int | None = None,
+    end: int | None = None,
+    interval: str = "hourly",
+) -> list[dict]:
+    """Get per-client usage history at the given report interval.
+
+    Returns one entry per bucket with ``time`` (epoch milliseconds), ``rx_bytes``
+    and ``tx_bytes``. ``start``/``end`` are epoch milliseconds; when omitted the
+    range defaults to the last 30 days ending now. The ``time`` attr is requested
+    explicitly so each bucket is timestamped (the controller omits it otherwise).
+
+    ``interval`` selects the controller report: ``hourly`` (retained ~7 days) or
+    ``daily`` (retained ~30+ days, used for the 30-day window). Unknown values
+    fall back to ``hourly``.
+    """
+    if interval not in _HISTORY_INTERVALS:
+        interval = "hourly"
+    if end is None:
+        end = int(time.time() * 1000)
+    if start is None:
+        start = end - _HISTORY_DEFAULT_LOOKBACK_MS
     response = await client.post(
-        "/proxy/network/api/s/{site}/stat/report/hourly.user",
-        json={"attrs": ["rx_bytes", "tx_bytes"], "mac": mac},
+        f"/proxy/network/api/s/{{site}}/stat/report/{interval}.user",
+        json={
+            "attrs": ["time", "rx_bytes", "tx_bytes"],
+            "start": start,
+            "end": end,
+            "mac": mac,
+        },
     )
     return response["data"]
 

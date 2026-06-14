@@ -139,7 +139,7 @@ async def test_list_all_clients(mock_client):
 async def test_get_client_history(mock_client):
     from unifi_mcp.tools.network.clients import get_client_history
 
-    respx.post("https://192.168.1.1/proxy/network/api/s/default/stat/report/hourly.user").mock(
+    route = respx.post("https://192.168.1.1/proxy/network/api/s/default/stat/report/hourly.user").mock(
         return_value=httpx.Response(200, json={
             "meta": {"rc": "ok"},
             "data": [
@@ -149,7 +149,56 @@ async def test_get_client_history(mock_client):
     )
     result = await get_client_history(mock_client, mac="AA:BB:CC:DD:EE:01")
     assert len(result) == 1
+    assert result[0]["time"] == 1713100000000
     assert result[0]["rx_bytes"] == 1024
+
+    # Request must ask for the `time` attr and a bounded range so buckets are timestamped.
+    body = json.loads(route.calls.last.request.content)
+    assert body["attrs"] == ["time", "rx_bytes", "tx_bytes"]
+    assert body["mac"] == "AA:BB:CC:DD:EE:01"
+    assert isinstance(body["start"], int) and isinstance(body["end"], int)
+    assert body["end"] > body["start"]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_client_history_explicit_range(mock_client):
+    from unifi_mcp.tools.network.clients import get_client_history
+
+    route = respx.post("https://192.168.1.1/proxy/network/api/s/default/stat/report/hourly.user").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": []})
+    )
+    await get_client_history(mock_client, mac="AA:BB:CC:DD:EE:01", start=1000, end=2000)
+    body = json.loads(route.calls.last.request.content)
+    assert body["start"] == 1000
+    assert body["end"] == 2000
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_client_history_daily_interval(mock_client):
+    from unifi_mcp.tools.network.clients import get_client_history
+
+    route = respx.post("https://192.168.1.1/proxy/network/api/s/default/stat/report/daily.user").mock(
+        return_value=httpx.Response(
+            200, json={"meta": {"rc": "ok"}, "data": [{"time": 1_717_000_000_000, "rx_bytes": 5, "tx_bytes": 6}]}
+        )
+    )
+    result = await get_client_history(mock_client, mac="AA:BB:CC:DD:EE:01", interval="daily")
+    assert result[0]["rx_bytes"] == 5
+    assert route.called  # daily.user endpoint was hit
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_client_history_unknown_interval_falls_back_to_hourly(mock_client):
+    from unifi_mcp.tools.network.clients import get_client_history
+
+    route = respx.post("https://192.168.1.1/proxy/network/api/s/default/stat/report/hourly.user").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": []})
+    )
+    await get_client_history(mock_client, mac="AA:BB:CC:DD:EE:01", interval="bogus")
+    assert route.called  # bogus interval routed to hourly.user
 
 
 def test_clients_tools_list():
