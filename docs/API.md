@@ -25,7 +25,7 @@ Load UniFi Network tools, optionally only some groups.
 Load UniFi Protect tools, optionally only some groups.
 
 - **Parameters:** `groups: list[str] | None = None`
-- **Groups:** `cameras` (cameras, events, live views), `devices` (NVRs). A `security` group (Alarm Manager) is announced for a later release; in this release it is reported as unknown.
+- **Groups:** `cameras` (cameras, camera controls, live views and viewers, live events), `devices` (NVRs, accessories) and `security` (Alarm Manager).
 - **Behavior:** same group syntax and incremental loading as `load_network_tools`.
 - **Returns:** `str`
 
@@ -1109,17 +1109,19 @@ Use for a quick overview before paging through get_events. hours: look-back wind
 
 ---
 
-## UniFi Protect (11 tools)
+## UniFi Protect (40 tools)
 
 Module: `tools/protect/`. Register with `load_protect_tools`.
 
 Protect tools run against the Integration API at `/proxy/protect/integration/v1/`, which accepts the same `X-API-Key` header as the Network surface. This is a different API than the legacy `/proxy/protect/api/` surface (which requires cookie auth and is out of scope).
 
-Tested firmware: **Protect 7.2.105** (published spec 7.3.70). The Integration API on this firmware exposes cameras (list/get/snapshot/rename), liveviews (list) and NVRs (list/get). It does not expose per-event queries, recording-mode control or camera reboot. The four tools that cannot execute register as PRODUCT_UNAVAILABLE stubs (see below) so callers can discover them and route around them deliberately. The `ptz_camera` stub was removed in this release because the published spec has PTZ endpoints; PTZ support is planned for a later release.
+Tested firmware: **Protect 7.2.105** (published spec 7.3.70). The Integration API on this firmware exposes cameras, PTZ, RTSPS streams, live views, viewers, accessories, Alarm Manager and two WebSocket event channels. It does not expose per-event queries (history), recording-mode control or camera reboot. The two tools that cannot execute (`set_camera_recording_mode`, `reboot_camera`) register as PRODUCT_UNAVAILABLE stubs so callers can discover them and route around them deliberately.
+
+Protect groups: `cameras` (23 tools: cameras, camera controls, views, events), `devices` (8: NVRs, accessories) and `security` (9: Alarm Manager). Tier 2 tools use the preview-confirm flow described at the top of this file; Tier 1 tools run immediately.
 
 ### Error envelope: `PRODUCT_UNAVAILABLE`
 
-Four tools in this surface return the following envelope when the required endpoint is not available on the connected firmware. Callers can branch on `result.get("error") is True` and `result.get("category") == "PRODUCT_UNAVAILABLE"` to handle these stubs without tripping over the actual error handlers used for network failures.
+Two tools in this surface return the following envelope when the required endpoint is not available on the connected firmware. Callers can branch on `result.get("error") is True` and `result.get("category") == "PRODUCT_UNAVAILABLE"` to handle these stubs without tripping over the actual error handlers used for network failures.
 
 ```json
 {
@@ -1179,7 +1181,7 @@ Rename a camera. Cosmetic change, no service disruption.
 - **Returns:** `dict` with keys: `executed: True`, `action: "update_camera_name"`, `camera_id`, `name` (the updated name as returned by the API)
 - **Side effect:** Invalidates the `protect_cameras` cache.
 - **Endpoint:** PATCH /proxy/protect/integration/v1/cameras/{id} with body `{"name": "..."}`
-- **Note:** No confirm flag required (Tier 1). Live-verified against the G5 PTZ on Protect 7.2.105. This is the only Tier 1 mutation available in the Protect surface on this firmware.
+- **Note:** No confirm flag required (Tier 1). Live-verified against the G5 PTZ on Protect 7.2.105. See Camera controls below for the other camera writes.
 
 ### set_camera_recording_mode **(PRODUCT_UNAVAILABLE stub)**
 
@@ -1225,24 +1227,249 @@ Attempt to reboot a camera via the Integration API.
 
 ---
 
-## Events (2 tools)
+## Camera controls (7 tools)
 
-Module: `tools/protect/events.py`
+Module: `tools/protect/camera_controls.py` (group `cameras`). Settings validation lives in `camera_settings_validation.py`. Cache category `protect_cameras`.
 
-### list_motion_events **(PRODUCT_UNAVAILABLE stub)**
+### ptz_camera **(Tier 1)**
 
-Attempt to fetch motion events from Protect.
+Move a PTZ camera to a saved preset or start and stop a saved patrol. Free pan, tilt and zoom is not offered by the API.
 
-- **Parameters:** `camera_id: str | None`, `limit: int = 50`
-- **Returns:** `[PRODUCT_UNAVAILABLE_envelope]` (single-element list containing the error envelope)
-- **Why stubbed:** GET /proxy/protect/integration/v1/events returns 404 on Protect 7.0.104 via API key.
+- **Parameters:** `camera_id: str`, `action: str` (`"goto"` | `"patrol_start"` | `"patrol_stop"`), `slot: int | None = None`
+- **Slots:** `goto` takes -1 (home) to 99; `patrol_start` takes 0-4; `patrol_stop` takes none.
+- **Returns:** `dict` with `executed`, `action`, `camera_id`, `ptz_action`, `slot`, `response`. A camera whose model name does not contain "PTZ" returns a `VALIDATION_ERROR`. When the model is unknown the call is attempted and a console rejection is reported as not PTZ-capable. An unknown camera returns `NOT_FOUND`.
+- **Endpoint:** POST /proxy/protect/integration/v1/cameras/{id}/ptz/goto/{slot}, /ptz/patrol/start/{slot}, /ptz/patrol/stop
 
-### list_smart_detections **(PRODUCT_UNAVAILABLE stub)**
+### update_camera_settings **(Tier 2)**
 
-Attempt to fetch smart detection events (person, vehicle, animal, package) from Protect.
+Change camera settings. Pass only the keys to change.
 
-- **Parameters:** `camera_id: str | None`, `limit: int = 50`
-- **Returns:** `[PRODUCT_UNAVAILABLE_envelope]` (single-element list containing the error envelope)
-- **Why stubbed:** Same endpoint as `list_motion_events`; returns 404 on Protect 7.0.104 via API key.
+- **Parameters:** `camera_id: str`, `settings: dict`, `confirm: bool = False`
+- **Allowed keys:** `osdSettings`, `ledSettings`, `lcdMessage`, `micVolume` (1-100), `videoMode` (limited to the camera's feature flags, `homekit` excluded), `hdrType` (`auto` | `on` | `off`), `smartDetectSettings`. `name` is rejected (use `update_camera_name`). Unknown keys are rejected locally to avoid `AJV_PARSE_ERROR`.
+- **Returns:** preview `dict` with `changes` (`current` and `proposed` per key); on confirm `{executed, action, camera_id, settings, response}`. An empty 200 body is reported as `executed: False`.
+- **Endpoint:** PATCH /proxy/protect/integration/v1/cameras/{id}
+
+### set_camera_led **(Tier 1)**
+
+Turn the status LED on or off.
+
+- **Parameters:** `camera_id: str`, `enabled: bool`
+- **Returns:** `dict` with `executed`, `action`, `camera_id`, `enabled`, `response`
+- **Endpoint:** PATCH /proxy/protect/integration/v1/cameras/{id} with `{"ledSettings": {"isEnabled": ...}}`
+
+### disable_camera_mic_permanently **(Tier 2)**
+
+PERMANENTLY disable a camera's microphone. Irreversible until the camera is factory reset.
+
+- **Parameters:** `camera_id: str`, `confirm: bool = False`
+- **Returns:** preview `dict`, then `{executed, action, camera_id, response}`
+- **Endpoint:** POST /proxy/protect/integration/v1/cameras/{id}/disable-mic-permanently
+
+### get_rtsps_streams **(Tier 1)**
+
+List a camera's existing RTSPS stream URLs by quality.
+
+- **Parameters:** `camera_id: str`, `reveal_urls: bool = False`
+- **Returns:** `dict` with `camera_id`, `revealed`, `streams` (quality to URL, null when no stream exists). The token in each URL is masked at any depth unless `reveal_urls=True`. Revealed URLs are bearer credentials: anyone who can reach the console on port 7441 can watch the camera.
+- **Endpoint:** GET /proxy/protect/integration/v1/cameras/{id}/rtsps-stream
+
+### create_rtsps_stream **(Tier 2)**
+
+Create RTSPS stream URLs.
+
+- **Parameters:** `camera_id: str`, `qualities: list` (`high`, `medium`, `low`, `package`), `confirm: bool = False`
+- **Returns:** preview `dict`, then `{executed, action, camera_id, qualities, response}` with masked URLs. The `package` quality requires a camera with a package camera.
+- **Endpoint:** POST /proxy/protect/integration/v1/cameras/{id}/rtsps-stream with `{"qualities": [...]}`
+
+### delete_rtsps_stream **(Tier 2)**
+
+Delete RTSPS streams. Anything using the removed URLs stops working.
+
+- **Parameters:** `camera_id: str`, `qualities: list`, `confirm: bool = False`
+- **Returns:** preview `dict` with `impact`, then `{executed, action, camera_id, qualities, response}`
+- **Endpoint:** DELETE /proxy/protect/integration/v1/cameras/{id}/rtsps-stream?qualities=a&qualities=b (repeated parameter, unverified against a console)
+
+---
+
+## Live views and viewers (6 tools)
+
+Module: `tools/protect/views.py` (group `cameras`, all Tier 1). Cache categories `protect_liveviews` (shared with `list_liveviews`) and `protect_viewers`.
+
+### get_liveview
+
+- **Parameters:** `liveview_id: str`
+- **Returns:** `dict` (id, name, layout, slots with cameras and cycle settings, flags), or `NOT_FOUND`
+- **Endpoint:** GET /proxy/protect/integration/v1/liveviews/{id}
+
+### create_liveview
+
+- **Parameters:** `name: str`, `layout: int` (1-26, must equal `len(slots)`), `slots: list[dict]`, `is_global: bool = False`
+- **Slots:** `{"cameras": [ids], "cycleMode": "time" | "motion", "cycleInterval": seconds}`; cycle mode defaults to `time` and interval to 10.
+- **Returns:** `dict` with `executed`, `action`, `liveview`
+- **Endpoint:** POST /proxy/protect/integration/v1/liveviews
+
+### update_liveview
+
+- **Parameters:** `liveview_id: str`, `updates: dict` (`name`, `isDefault`, `isGlobal`, `layout`, `slots`; snake_case aliases accepted)
+- **Behavior:** changing `slots` alone sets `layout` to the new slot count; `layout` without `slots` is rejected. An empty 200 response is reported as `executed: False`.
+- **Endpoint:** PATCH /proxy/protect/integration/v1/liveviews/{id}
+
+### list_viewers
+
+- **Parameters:** None
+- **Returns:** `list[dict]` (id, name, state, MAC, stream limit, assigned live view id)
+- **Endpoint:** GET /proxy/protect/integration/v1/viewers
+
+### get_viewer
+
+- **Parameters:** `viewer_id: str`
+- **Returns:** `dict`, or `NOT_FOUND`
+- **Endpoint:** GET /proxy/protect/integration/v1/viewers/{id}
+
+### set_viewer_liveview
+
+Assign a live view to a viewer (wall display). Pass `liveview_id=None` to clear the assignment.
+
+- **Parameters:** `viewer_id: str`, `liveview_id: str | None`
+- **Endpoint:** PATCH /proxy/protect/integration/v1/viewers/{id} with `{"liveview": ...}`
+
+---
+
+## Accessories (5 tools)
+
+Module: `tools/protect/accessories.py` (group `devices`). Cache category `protect_devices`. One generic tool set covers `lights`, `sensors`, `chimes`, `sirens`, `relays`, `speakers`, `bridges`, `link-stations`, `alarm-hubs` and `fobs`. Secret-looking fields (tokens, passwords, PSKs, RTSPS URLs) are removed from output.
+
+### list_protect_devices **(Tier 1)**
+
+- **Parameters:** `kind: str`
+- **Returns:** `list[dict]` of device records
+- **Endpoint:** GET /proxy/protect/integration/v1/{kind}
+
+### get_protect_device **(Tier 1)**
+
+- **Parameters:** `kind: str`, `device_id: str`
+- **Returns:** `dict`, or `NOT_FOUND`
+- **Endpoint:** GET /proxy/protect/integration/v1/{kind}/{id}
+
+### update_protect_device **(Tier 2)**
+
+Update settings from a per-kind allow-list built from each kind's PATCH schema.
+
+- **Parameters:** `kind: str`, `device_id: str`, `settings: dict`, `confirm: bool = False`
+- **Returns:** preview `dict` with `current`, `proposed` and an optional `impact`; on confirm `{executed, action, response}`. An empty 200 is reported as `executed: False`.
+- **Endpoint:** PATCH /proxy/protect/integration/v1/{kind}/{id}
+
+### run_protect_device_action **(Tier 2)**
+
+Run a physical action. Sirens are loud and relays can open gates or doors.
+
+- **Parameters:** `kind: str`, `device_id: str`, `action: str`, `output_id: int | str | None = None`, `options: dict | None = None`, `confirm: bool = False`
+- **Actions:** sirens `play` (`options.duration` 5, 10, 20 or 30 seconds), `stop`, `test-sound` (`options.volume` 1-100); speakers `test-sound` (`options.volume` 0-100); relays `activate` (needs `output_id`; `options.state` `on`/`off` is required, `options.pulseDuration` ms); alarm-hubs `trigger` (needs `output_id`; `options.enable` is required, `options.delay` and `options.duration` ms).
+- **Toggle:** the console toggles a relay or alarm hub output when state or enable is omitted. Pass `options={"toggle": True}` to do that deliberately; it is removed from the request body.
+- **output_id:** a non-negative integer (0 or 1) or numeric string, taken from relay `outputs[].id` or the alarm hub output keys.
+- **Returns:** preview `dict` with `impact` and, for relays and alarm hubs, an `effect` line; on confirm `{executed, action, kind, device_id, device_action, response}`
+- **Endpoint:** POST /proxy/protect/integration/v1/{kind}/{id}/{action}, or .../{kind}/{id}/outputs/{output_id}/{action}
+
+### list_protect_users **(Tier 1)**
+
+- **Parameters:** None
+- **Returns:** `dict` with `users`, `ulp_users` (id, name, email, status, source) and `errors`. No tokens or credentials are returned.
+- **Endpoint:** GET /proxy/protect/integration/v1/users and /ulp-users
+
+---
+
+## Alarm Manager (9 tools)
+
+Module: `tools/protect/alarm.py` (group `security`). Cache category `protect_alarm`. Alarm endpoints are only available when the alarm manager is local.
+
+### list_arm_profiles **(Tier 1)**
+
+- **Parameters:** None
+- **Returns:** `list[dict]` (id, name, automations, schedules, record_everything, activation_delay_ms, creator, created_at, updated_at)
+- **Endpoint:** GET /proxy/protect/integration/v1/arm-profiles
+
+### get_alarm_status **(Tier 1)**
+
+- **Parameters:** None
+- **Returns:** `dict` with `nvr_id`, `status` (`disabled` | `arming` | `armed` | `breach`), `arm_profile_id` (null on firmware that does not expose it, such as Protect 7.2.105), `armed_at`, `will_be_armed_at`, `breach_detected_at`, `breach_event_count`, `breach_trigger_event_id`, `breach_event_id`. Timestamps are epoch milliseconds. Returns `PRODUCT_UNAVAILABLE` when the NVR has no `armMode`.
+- **Endpoint:** GET /proxy/protect/integration/v1/nvrs
+
+### arm_alarm **(Tier 2)**
+
+Arm using the active profile.
+
+- **Parameters:** `confirm: bool = False`
+- **Returns:** preview `dict` with `impact`, `current_status`, `active_profile_id`, `active_profile_name` and `available_profiles`; on confirm `{executed, action, response}`. When already armed or arming, `{executed: False, current_status, message}`.
+- **Endpoint:** POST /proxy/protect/integration/v1/arm-profiles/enable
+
+### disarm_alarm **(Tier 2)**
+
+- **Parameters:** `confirm: bool = False`
+- **Returns:** preview `dict` with `impact` and `current_status`; no-op `{executed: False}` when already disabled
+- **Endpoint:** POST /proxy/protect/integration/v1/arm-profiles/disable
+
+### set_active_arm_profile **(Tier 2)**
+
+Select the active profile without arming.
+
+- **Parameters:** `profile_id: str`, `confirm: bool = False`
+- **Endpoint:** PATCH /proxy/protect/integration/v1/arm-profiles/settings with `{"armProfileId": ...}`
+
+### create_arm_profile **(Tier 2)**
+
+- **Parameters:** `name: str`, `automations: list[str] | None`, `schedules: list[dict] | None` (`{"start": cron, "end": cron}`), `record_everything: bool | None`, `activation_delay: int | None` (0, 60000, 300000 or 600000 ms), `confirm: bool = False`
+- **Defaults:** no automations, no schedules, `record_everything=False`, `activation_delay=0` (the spec requires all five fields).
+- **Endpoint:** POST /proxy/protect/integration/v1/arm-profiles
+
+### update_arm_profile **(Tier 2)**
+
+- **Parameters:** `profile_id: str`, `updates: dict` (`name`, `automations`, `schedules`, `recordEverything`, `activationDelay`; snake_case aliases accepted), `confirm: bool = False`
+- **Returns:** an empty 200 is reported as `executed: False`
+- **Endpoint:** PATCH /proxy/protect/integration/v1/arm-profiles/{id}
+
+### delete_arm_profile **(Tier 2)**
+
+Irreversible.
+
+- **Parameters:** `profile_id: str`, `confirm: bool = False`
+- **Endpoint:** DELETE /proxy/protect/integration/v1/arm-profiles/{id}
+
+### trigger_alarm_webhook **(Tier 2)**
+
+Fire an Alarm Manager webhook trigger. The id is a user-defined trigger string.
+
+- **Parameters:** `webhook_id: str`, `confirm: bool = False`
+- **Returns:** `{executed, action, webhook_id, response, note}`. The console answers 204 whether or not any alarm uses the id, so success means only that the trigger was sent.
+- **Endpoint:** POST /proxy/protect/integration/v1/alarm-manager/webhook/{id}
+
+---
+
+## Events (4 tools)
+
+Module: `tools/protect/events.py` (group `cameras`, all Tier 1). Protect has no REST event history, so these tools connect to the Protect Integration WebSocket (`/proxy/protect/integration/v1/subscribe/events` or `/subscribe/devices`) with the `X-API-Key` header, collect messages for a window, and close. TLS verification follows `UNIFI_VERIFY_SSL`. A connection failure returns a `CONNECTION_ERROR` dict that never contains the key. Camera names are looked up with GET /cameras; if that fails the result carries a `warning` and the stream continues.
+
+### watch_protect_events
+
+- **Parameters:** `seconds: int = 30` (cap 120), `event_types: list[str] | None` (for example `motion`, `smartDetectZone`, `smartDetectLine`, `ring`, `sensorMotion`), `camera_id: str | None`, `max_events: int = 100` (cap 500, counts messages)
+- **Returns:** `dict` with `tool`, `window_seconds`, `messages_seen`, `count` (distinct events; add and update messages for one event id are merged), `events` (message_type, event_id, event_type, camera_id, camera_name, smart_detect_types, score, ISO start and end), `note`, and `capped` or `warning` when relevant
+
+### list_motion_events
+
+Live-window motion events.
+
+- **Parameters:** `seconds: int = 30` (cap 120), `camera_id: str | None`
+- **Returns:** same shape as `watch_protect_events`. The previous `limit` argument and `PRODUCT_UNAVAILABLE` stub behavior are gone.
+
+### list_smart_detections
+
+Live-window smart detections (person, vehicle, animal, package, face, licensePlate; audio detections such as `alrmSpeak` are passed through).
+
+- **Parameters:** `seconds: int = 30` (cap 120), `detect_types: list[str] | None`, `camera_id: str | None`
+- **Returns:** same shape as `watch_protect_events`
+
+### watch_protect_device_updates
+
+- **Parameters:** `seconds: int = 15` (cap 120), `max_messages: int = 100` (cap 500)
+- **Returns:** `dict` with `tool`, `window_seconds`, `messages_seen`, `count`, `messages` (message_type `add` | `update` | `remove`, model_key, device_ids, name, state, changed_fields), `note`
 
 ---

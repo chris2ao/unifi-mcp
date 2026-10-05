@@ -1,0 +1,38 @@
+[
+  {
+    "type": "update",
+    "item": {
+      "id": "000000000000000000000c01",
+      "modelKey": "camera",
+      "state": "DISCONNECTED",
+      "name": "Driveway Cam"
+    }
+  },
+  {
+    "type": "add",
+    "item": {
+      "id": "00000000000000000000d001",
+      "modelKey": "light",
+      "name": "Porch Light",
+      "state": "CONNECTED"
+    }
+  },
+  {
+    "type": "remove",
+    "item": {
+      "id": "00000000000000000000d001",
+      "modelKey": "light"
+    }
+  },
+  {
+    "type": "update",
+    "item": {
+      "id": [
+        "000000000000000000000c01",
+        "000000000000000000000c02"
+      ],
+      "modelKey": "camera",
+      "isMicEnabled": false
+    }
+  }
+]

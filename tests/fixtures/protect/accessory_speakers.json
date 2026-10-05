@@ -1,0 +1,14 @@
+[
+  {
+    "id": "000000000000000000000004",
+    "modelKey": "speaker",
+    "state": "CONNECTED",
+    "name": "Lobby Speaker",
+    "type": "UP-speaker",
+    "guid": "00000000-0000-0000-0000-000000000004",
+    "mac": "aa:bb:cc:00:00:04",
+    "volume": 40,
+    "micVolume": 60,
+    "isMicEnabled": true
+  }
+]

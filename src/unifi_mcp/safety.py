@@ -112,7 +112,6 @@ _LEGACY_TIER2_BY_MODULE: dict[str, dict[str, str]] = {
     # Protect camera actions (stubs or real, they take confirm)
     "protect.cameras": {
         "set_camera_recording_mode": "protect_cameras",
-        "ptz_camera": "protect_cameras",
     },
     "protect.devices": {
         "reboot_camera": "protect_cameras",

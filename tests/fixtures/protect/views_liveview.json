@@ -1,0 +1,13 @@
+{
+  "id": "00000000-0000-0000-0000-0000000000a4",
+  "modelKey": "liveview",
+  "name": "Front Cams",
+  "isDefault": false,
+  "isGlobal": true,
+  "owner": "00000000-0000-0000-0000-0000000000c1",
+  "layout": 2,
+  "slots": [
+    {"cameras": ["00000000-0000-0000-0000-0000000000a1"], "cycleMode": "time", "cycleInterval": 10},
+    {"cameras": ["00000000-0000-0000-0000-0000000000a2", "00000000-0000-0000-0000-0000000000a3"], "cycleMode": "motion", "cycleInterval": 30}
+  ]
+}

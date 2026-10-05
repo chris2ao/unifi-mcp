@@ -1,0 +1,24 @@
+[
+  {
+    "id": "00000000-0000-0000-0000-0000000000a5",
+    "modelKey": "viewer",
+    "state": "CONNECTED",
+    "name": "Lobby Viewer",
+    "type": "UP-Viewport",
+    "guid": "00000000-0000-0000-0000-0000000000e2",
+    "mac": "AABBCC000002",
+    "liveview": "00000000-0000-0000-0000-0000000000a4",
+    "streamLimit": 16
+  },
+  {
+    "id": "00000000-0000-0000-0000-0000000000a6",
+    "modelKey": "viewer",
+    "state": "DISCONNECTED",
+    "name": null,
+    "type": "UP-Viewport",
+    "guid": "00000000-0000-0000-0000-0000000000e3",
+    "mac": "AABBCC000003",
+    "liveview": null,
+    "streamLimit": 16
+  }
+]

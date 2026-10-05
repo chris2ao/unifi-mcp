@@ -1,0 +1,26 @@
+[
+  {
+    "id": "000000000000000000000003",
+    "modelKey": "relay",
+    "state": "CONNECTED",
+    "name": "Gate Relay",
+    "type": "UP-relay",
+    "guid": "00000000-0000-0000-0000-000000000003",
+    "mac": "aa:bb:cc:00:00:03",
+    "ledSettings": {
+      "isEnabled": true
+    },
+    "outputs": [
+      {
+        "id": 0,
+        "name": "Gate",
+        "state": "off"
+      }
+    ],
+    "inputs": [],
+    "wirelessConnectionState": {
+      "signalQuality": 90,
+      "signalStrength": -55
+    }
+  }
+]

@@ -297,18 +297,18 @@ def test_module_tier2_ignores_non_mapping_declaration():
 
 def test_moved_legacy_tool_follows_new_module():
     """A legacy Tier 2 name exported by a different module takes that module's tier."""
-    async def ptz_camera(client, camera_id: str): ...
+    async def set_camera_recording_mode(client, camera_id: str): ...
 
     class NewModule:
-        TOOLS = [ptz_camera]
+        TOOLS = [set_camera_recording_mode]
         TIER2_TOOLS = {}
 
     assert module_tier2_tools("protect", "camera_controls", NewModule) == {}
     module = _registry._build_module("protect", "camera_controls", NewModule)
     manager = SafetyManager()
-    assert manager.get_tier("ptz_camera") == SafetyTier.PREVIEW_CONFIRM  # legacy baseline
+    assert manager.get_tier("set_camera_recording_mode") == SafetyTier.PREVIEW_CONFIRM  # legacy baseline
     merge_module_tiers(manager, [module])
-    assert manager.get_tier("ptz_camera") == SafetyTier.EXECUTE
+    assert manager.get_tier("set_camera_recording_mode") == SafetyTier.EXECUTE
 
 
 def test_merge_module_tiers_into_safety_manager(fake_package):

@@ -1,0 +1,18 @@
+[
+  {
+    "id": "000000000000000000000006",
+    "modelKey": "linkStation",
+    "state": "CONNECTED",
+    "name": "Alarm Hub",
+    "type": "UP-linkStation",
+    "guid": "00000000-0000-0000-0000-000000000006",
+    "mac": "aa:bb:cc:00:00:06",
+    "outputs": [
+      {
+        "id": 0,
+        "name": "Siren",
+        "state": "off"
+      }
+    ]
+  }
+]

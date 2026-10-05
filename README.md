@@ -10,7 +10,7 @@ An MCP server for UniFi Network and Protect, built on FastMCP and httpx. API-key
 
 ## What this is
 
-A 140-tool MCP server (7 always-loaded tools, 122 Network and 11 Protect, with everything loaded) for UniFi Network and Protect. Tools load on demand per product and per group, so the token budget stays small until you need a capability. The full per-tool list with tiers is in [docs/TOOLS.md](docs/TOOLS.md). All mutations require a two-step preview-confirm flow before any API call is made. Authentication uses the X-API-Key header only (local-console keys, not cloud keys).
+A 169-tool MCP server (7 always-loaded tools, 122 Network and 40 Protect, with everything loaded) for UniFi Network and Protect. Tools load on demand per product and per group, so the token budget stays small until you need a capability. The full per-tool list with tiers is in [docs/TOOLS.md](docs/TOOLS.md). All mutations require a two-step preview-confirm flow before any API call is made. Authentication uses the X-API-Key header only (local-console keys, not cloud keys).
 
 ## Table of Contents
 
@@ -178,7 +178,7 @@ flowchart LR
     CC[Claude Code session] -->|stdio| MCP[FastMCP server<br/>python -m unifi_mcp]
     MCP --> UT[7 utility tools<br/>always loaded]
     UT -->|load_network_tools| NET[122 Network tools<br/>core 54, security 57, insights 11]
-    UT -->|load_protect_tools| PROT[11 Protect tools<br/>7 functional + 4 stubs]
+    UT -->|load_protect_tools| PROT[40 Protect tools<br/>cameras 23, devices 8, security 9]
     UT -->|load_access_tools| ACC[Access tools<br/>0 on this console]
     NET & PROT & ACC -->|X-API-Key header| HC[httpx async client]
     HC -->|HTTPS| UNIFI[UniFi console<br/>UDM Pro / UCG / etc]
@@ -239,25 +239,30 @@ Groups: `core` (54 tools), `security` (57), `insights` (11). The full per-tool l
 
 **Note on ZBF ids:** Integration API policy ids are UUIDs and differ from the v2 `_id` values returned by `list_zbf_policies`. Use `list_zbf_policies_v1` to get ids for the official ZBF tools.
 
-### Protect Tools (11, loaded via `load_protect_tools`)
+### Protect Tools (40, loaded via `load_protect_tools`)
 
-Groups: `cameras` (8 tools), `devices` (3 tools).
+Groups: `cameras` (23 tools), `devices` (8), `security` (9). The full per-tool list is in [docs/TOOLS.md](docs/TOOLS.md); parameters and return shapes are in [docs/API.md](docs/API.md).
 
-| Tool | Status | Notes |
+| Category | Count | Tools |
 |---|---|---|
-| `list_cameras` | Functional | Returns all cameras on the NVR |
-| `get_camera` | Functional | Single camera by ID with full config |
-| `get_camera_snapshot` | Functional | Returns base64-encoded JPEG |
-| `list_liveviews` | Functional | Configured live view layouts |
-| `list_nvrs` | Functional | NVR device list |
-| `get_nvr_stats` | Functional | Storage, recording status, uptime |
-| `update_camera_name` | Functional | Tier-1 mutation (executes immediately, no confirm step) |
-| `set_camera_recording_mode` | PRODUCT_UNAVAILABLE stub | No recording-mode field in the Integration API (Protect 7.2.105, spec 7.3.70) |
-| `reboot_camera` | PRODUCT_UNAVAILABLE stub | No reboot endpoint in the Integration API (Protect 7.2.105, spec 7.3.70) |
-| `list_motion_events` | PRODUCT_UNAVAILABLE stub | Endpoint absent in Protect 7.0.104 via Integration API |
-| `list_smart_detections` | PRODUCT_UNAVAILABLE stub | Endpoint absent in Protect 7.0.104 via Integration API |
+| Cameras | 6 | list, get, snapshot, rename, list live views, recording mode (stub) |
+| Camera controls | 7 | PTZ presets and patrols, settings update, status LED, permanent mic disable, RTSPS list, create, delete |
+| Live views and viewers | 6 | get, create, update live view; list, get viewer; assign a live view to a viewer |
+| Live events | 4 | watch events, watch device updates, motion events, smart detections (live window, see below) |
+| NVRs and devices | 3 | list NVRs, NVR stats, reboot camera (stub) |
+| Accessories | 5 | list, get, update, run action (siren, speaker, relay, alarm hub), list users |
+| Alarm Manager | 9 | list profiles, status, arm, disarm, set active profile, create, update, delete profile, trigger webhook |
+| **Total** | **40** | |
 
-The 4 stubs are registered and callable. Each returns a structured error envelope that explains why the operation is unavailable. When UniFi ships these endpoints in a future firmware, the `no network call` assertion tests will fail, surfacing the stubs for implementation.
+**Stubs that remain.** `set_camera_recording_mode` and `reboot_camera` are registered and callable but return a `PRODUCT_UNAVAILABLE` error envelope. The Protect Integration API (Protect 7.2.105, spec 7.3.70) has no recording-mode field and no reboot endpoint, so there is nothing to call. They will be implemented when UniFi ships the endpoints.
+
+**PTZ is real.** `ptz_camera(camera_id, action, slot)` moves a PTZ camera to a saved preset (`goto`, slot -1 is home) or starts and stops a saved patrol. It is Tier 1. Free pan, tilt and zoom is not offered by the API.
+
+**Event tools are live windows, not history.** Protect has no REST event history. `watch_protect_events`, `list_motion_events`, `list_smart_detections` and `watch_protect_device_updates` connect to the Protect WebSocket for `seconds` (default 30 for events, 15 for device updates, hard cap 120), return what arrives, and close. An empty result means nothing happened during the window, not that nothing happened earlier. `count` is distinct events (the add and update messages for one event id are merged); `messages_seen` is the raw message volume.
+
+**RTSPS URLs are masked.** The stream token in an RTSPS URL grants live video access to anyone who can reach the console, so `get_rtsps_streams` and `create_rtsps_stream` mask it. Pass `reveal_urls=True` to `get_rtsps_streams` only when you need the real URL, and do not share it.
+
+**Physical actions are explicit.** Relay `activate` and alarm hub `trigger` require `options.state` or `options.enable`, because the console toggles the output when it is omitted. Arm and disarm previews show the current alarm state and active profile.
 
 ### Access Tools
 
@@ -270,8 +275,8 @@ Access tools are architecture stubs. The loader probes the console and reports t
 | Startup (utility only) | 7 |
 | After `load_network_tools(groups=["core"])` | 61 |
 | After `load_network_tools` (all groups) | 129 |
-| After `load_protect_tools` (all groups) | 140 (on a console with Protect) |
-| After `load_access_tools` | 140 (no Access hardware on test console) |
+| After `load_protect_tools` (all groups) | 169 (on a console with Protect) |
+| After `load_access_tools` | 169 (no Access hardware on test console) |
 
 ### OpenAPI Coverage
 
@@ -280,7 +285,7 @@ Official-endpoint coverage from `scripts/spec_coverage.py` against the vendored 
 | Spec | Version | Operations covered |
 |---|---|---|
 | UniFi Network Integration API | 10.6.106 | 46.6% (34 of 73) |
-| UniFi Protect Integration API | 7.3.70 | 10.8% (8 of 74) |
+| UniFi Protect Integration API | 7.3.70 | 40.5% (30 of 74) |
 | UniFi Site Manager API | 1.0.0 | 0% (0 of 14, no cloud tools in this release) |
 
 Run `uv run python scripts/spec_diff.py` after a firmware upgrade to see what changed upstream. See [docs/SPEC_MAINTENANCE.md](docs/SPEC_MAINTENANCE.md).
@@ -317,8 +322,9 @@ If the probe returns a non-200 status (product absent, network unreachable, wron
 | Network | `core` | System, devices, clients, networks, WiFi, topology, backups, hotspot, port profiles |
 | Network | `security` | Firewall, zone-based firewall, DNS policies, traffic matching lists, MAC ACL, RADIUS, port forwarding, traffic rules, QoS, VPN, webhooks |
 | Network | `insights` | DPI, traffic flows, dashboard summary, speed tests, WAN status |
-| Protect | `cameras` | Cameras, events, live views |
-| Protect | `devices` | NVRs |
+| Protect | `cameras` | Cameras, camera controls (PTZ, settings, RTSPS), live views and viewers, live events |
+| Protect | `devices` | NVRs, accessories (lights, sensors, chimes, sirens, relays, speakers, bridges, alarm hubs) |
+| Protect | `security` | Alarm Manager (arm profiles, arm, disarm, webhook) |
 
 ```
 load_network_tools(groups=["core"])               # 54 tools
@@ -354,7 +360,7 @@ stateDiagram-v2
 
 ### Tier 1 (execute immediately, no confirm step)
 
-Read operations (list, get, stats, topology, traffic flows, insights), cosmetic mutations (rename, alias), and non-destructive actions (locate LED, reconnect client, create voucher, create backup, `update_camera_name`).
+Read operations (list, get, stats, topology, traffic flows, insights, live event windows), cosmetic mutations (rename, alias), and non-destructive actions (locate LED, reconnect client, create voucher, create backup, `update_camera_name`, `set_camera_led`, `ptz_camera`, live view and viewer edits).
 
 ### Tier 2 (preview first, then confirm=True to execute)
 
@@ -373,6 +379,9 @@ Read operations (list, get, stats, topology, traffic flows, insights), cosmetic 
 | Port Profiles | create, update, delete |
 | Backups | restore |
 | Traffic Rules | create, update, delete, toggle |
+| Protect camera controls | update camera settings, permanently disable mic, create and delete RTSPS streams |
+| Protect accessories | update device settings, run device action (siren, speaker, relay, alarm hub) |
+| Alarm Manager | arm, disarm, set active profile, create, update and delete profile, trigger webhook |
 
 **How it works:**
 
@@ -418,7 +427,19 @@ Either Protect is not installed on this console, or the probe endpoint `/proxy/p
 
 **`set_camera_recording_mode`, `reboot_camera`, or the webhook tools return PRODUCT_UNAVAILABLE**
 
-This is expected behavior on the tested firmware (Protect 7.2.105, Network 10.6.106). The Integration API does not expose these operations via API key. Use the Protect or Network web or mobile UI for these actions. The stubs will be implemented when UniFi ships the corresponding API endpoints.
+This is expected behavior on the tested firmware (Protect 7.2.105, Network 10.6.106). The Integration API does not expose these operations via API key. Use the Protect or Network web or mobile UI for these actions. The stubs will be implemented when UniFi ships the corresponding API endpoints. `ptz_camera`, `list_motion_events` and `list_smart_detections` are no longer stubs.
+
+**`list_motion_events` or `watch_protect_events` returns no events**
+
+Protect has no event history through the API. These tools only see events that occur while they are listening (default 30 seconds, max 120). Raise `seconds`, or call again while the activity you care about is happening. A `CONNECTION_ERROR` means the events WebSocket could not be opened (check `UNIFI_HOST` and the key).
+
+**`get_alarm_status` reports `arm_profile_id` as null or `PRODUCT_UNAVAILABLE`**
+
+Protect 7.2.105 exposes `armMode` without the active profile id, so the id is null there. If the NVR exposes no `armMode` at all, Alarm Manager state is not available on this firmware or the alarm manager is not local.
+
+**A relay or alarm hub action asks for `options.state` or `options.enable`**
+
+The console toggles the output when no state is given, which can close an open gate. Pass `options={"state": "on"}` (relay) or `options={"enable": true}` (alarm hub), or `options={"toggle": true}` to toggle on purpose. `output_id` is the integer from the relay's `outputs[].id`, for example `0`.
 
 **`get_server_info` shows firmware `drift`**
 
@@ -426,7 +447,7 @@ The console reports a Network or Protect major.minor version that differs from t
 
 **A loader says "Unknown ... tool group"**
 
-Group names are `core`, `security` and `insights` for Network, and `cameras` and `devices` for Protect. Call `list_tool_groups` for the current list. Check `UNIFI_TOOL_GROUPS` if the error appears without a `groups` argument.
+Group names are `core`, `security` and `insights` for Network, and `cameras`, `devices` and `security` for Protect. Call `list_tool_groups` for the current list. Check `UNIFI_TOOL_GROUPS` if the error appears without a `groups` argument.
 
 **A confirm call returns `PREVIEW_REQUIRED`**
 
@@ -453,7 +474,7 @@ uv run pytest --cov
 uv run pytest -m integration
 ```
 
-Current status: __TESTS__ tests passing, 19 skipped integration tests.
+Current status: 1132 tests passing, 19 skipped integration tests.
 
 After changing tools, regenerate the tool list with `uv run python scripts/gen_tool_docs.py`. CI runs it with `--check` and fails when `docs/TOOLS.md` is stale.
 
@@ -478,14 +499,14 @@ src/unifi_mcp/
   tools/
     _registry.py      # Auto-discovery, tool groups, per-product loading
     network/          # 26 modules, 122 tools
-    protect/          # 11 tools (7 functional + 4 stubs)
+    protect/          # 40 tools (2 stubs): cameras, controls, views, accessories, events, alarm
     access/           # Stubs, 0 tools on current console
 scripts/
   spec_diff.py        # Diff live OpenAPI specs against docs/specs
   spec_coverage.py    # Official-endpoint coverage report
   gen_tool_docs.py    # Generates docs/TOOLS.md
 tests/
-  unit/               # __TESTS__ tests, no console required
+  unit/               # 1132 tests, no console required
   integration/        # 19 tests, require live console and env vars
 docs/
   plans/              # Implementation plans, audit reports, design specs

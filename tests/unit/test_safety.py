@@ -228,7 +228,7 @@ def test_tier2_includes_traffic_rules_and_protect_confirm_tools():
                  "delete_traffic_rule", "toggle_traffic_rule"):
         assert manager.get_tier(name) == SafetyTier.PREVIEW_CONFIRM
         assert manager.get_category(name) == "traffic_rules"
-    for name in ("set_camera_recording_mode", "ptz_camera", "reboot_camera"):
+    for name in ("set_camera_recording_mode", "reboot_camera"):
         assert manager.get_tier(name) == SafetyTier.PREVIEW_CONFIRM
 
 
@@ -306,16 +306,16 @@ def test_legacy_map_is_keyed_by_product_module():
 def test_apply_tool_tiers_adds_and_demotes():
     manager = SafetyManager()
     before = manager.tier2_tools
-    manager.apply_tool_tiers(["new_write", "ptz_camera", "get_x"], {"new_write": "things"})
+    manager.apply_tool_tiers(["new_write", "set_camera_recording_mode", "get_x"], {"new_write": "things"})
     assert manager.get_tier("new_write") == SafetyTier.PREVIEW_CONFIRM
     assert manager.get_category("new_write") == "things"
     # A legacy Tier 2 name listed as one of the module's tools but not declared is demoted.
-    assert manager.get_tier("ptz_camera") == SafetyTier.EXECUTE
+    assert manager.get_tier("set_camera_recording_mode") == SafetyTier.EXECUTE
     assert manager.get_tier("get_x") == SafetyTier.EXECUTE
     # Tools outside the call keep their tier.
     assert manager.get_tier("create_network") == SafetyTier.PREVIEW_CONFIRM
     # Earlier snapshots are copies, not views.
-    assert before["ptz_camera"] == "protect_cameras"
+    assert before["set_camera_recording_mode"] == "protect_cameras"
     assert "new_write" not in before
 
 

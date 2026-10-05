@@ -1,0 +1,14 @@
+[
+  {
+    "id": "000000000000000000000005",
+    "modelKey": "bridge",
+    "state": "CONNECTED",
+    "name": "Protect Bridge",
+    "type": "UP-BRIDGE",
+    "guid": "00000000-0000-0000-0000-000000000005",
+    "mac": "aa:bb:cc:00:00:05",
+    "platform": "mt7621",
+    "clients": [],
+    "maxClients": 10
+  }
+]

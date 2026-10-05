@@ -1,0 +1,21 @@
+[
+  {
+    "id": "000000000000000000000002",
+    "modelKey": "siren",
+    "state": "CONNECTED",
+    "name": "Hall Siren",
+    "type": "UP-siren",
+    "guid": "00000000-0000-0000-0000-000000000002",
+    "mac": "aa:bb:cc:00:00:02",
+    "volume": 50,
+    "ledSettings": {
+      "isEnabled": true
+    },
+    "sirenStatus": "idle",
+    "connectionType": "wireless",
+    "wirelessConnectionState": {
+      "signalQuality": 80,
+      "signalStrength": -60
+    }
+  }
+]

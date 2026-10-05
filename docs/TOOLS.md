@@ -16,10 +16,11 @@ Loaders register tools by group, for example `load_network_tools(groups=["core"]
 | Network | insights | 11 | 11 | 0 |
 | Network | security | 57 | 22 | 35 |
 | **Network** | **all** | **122** | **68** | **54** |
-| Protect | cameras | 8 | 7 | 1 |
-| Protect | devices | 3 | 2 | 1 |
-| **Protect** | **all** | **11** | **9** | **2** |
-| **Total** | | **133** | **77** | **56** |
+| Protect | cameras | 23 | 18 | 5 |
+| Protect | devices | 8 | 5 | 3 |
+| Protect | security | 9 | 2 | 7 |
+| **Protect** | **all** | **40** | **25** | **15** |
+| **Total** | | **162** | **93** | **69** |
 
 ## Network
 
@@ -170,19 +171,53 @@ Loaded by `load_protect_tools`.
 
 | Tool | Tier | Description |
 |---|---|---|
+| `ptz_camera` | 1 | Control a PTZ camera. action: 'goto' (move to preset slot, -1 is home), 'patrol_start' (slot 0-4), 'patrol_stop' (no slot). |
+| `update_camera_settings` | 2 | Change camera settings (Tier 2: preview, then confirm=True). settings keys: osdSettings, ledSettings, lcdMessage, micVolume (1-100), videoMode, hdrType (auto\|on\|off), smartDetectSettings. |
+| `set_camera_led` | 1 | Turn a camera's status LED on or off (cosmetic, Tier 1). enabled: true or false. |
+| `disable_camera_mic_permanently` | 2 | PERMANENTLY disable a camera's microphone (Tier 2, IRREVERSIBLE until the camera is factory reset). |
+| `get_rtsps_streams` | 1 | List a camera's existing RTSPS stream URLs by quality (high, medium, low, package). |
+| `create_rtsps_stream` | 2 | Create RTSPS stream URLs for a camera (Tier 2). qualities: list of high, medium, low, package. |
+| `delete_rtsps_stream` | 2 | Delete RTSPS streams of a camera (Tier 2). qualities: list of high, medium, low, package. |
 | `list_cameras` | 1 | List all UniFi Protect cameras with summary fields. |
 | `get_camera` | 1 | Get full configuration and feature flags for a single camera. |
 | `get_camera_snapshot` | 1 | Capture a current snapshot from the camera and return it as base64 JPEG. |
 | `list_liveviews` | 1 | List configured Protect liveview layouts. |
 | `update_camera_name` | 1 | Rename a camera (Tier-1, cosmetic). Calls PATCH /cameras/{id}. |
 | `set_camera_recording_mode` | 2 | Set recording mode (always\|motion\|never). Currently unavailable via API key. |
-| `list_motion_events` | 1 | List recent motion events. Currently unavailable via API key (see message). |
-| `list_smart_detections` | 1 | List recent smart-detection events. Currently unavailable via API key. |
+| `watch_protect_events` | 1 | Listen to the live Protect event stream for a short window and return what arrives. |
+| `list_motion_events` | 1 | Capture camera motion events during a LIVE window of `seconds` (default 30, max 120). |
+| `list_smart_detections` | 1 | Capture smart detections (person, vehicle, animal, package...) during a LIVE window. |
+| `watch_protect_device_updates` | 1 | Listen to live Protect device changes (add, update, remove) for a short window. |
+| `get_liveview` | 1 | Get one Protect live view by ID, including each slot's cameras and cycle settings. |
+| `create_liveview` | 1 | Create a Protect live view. layout is the slot count (1-26) and must equal len(slots). |
+| `update_liveview` | 1 | Update a live view. updates may contain name, isDefault, isGlobal, layout, slots (layout must equal slot count). |
+| `list_viewers` | 1 | List Protect viewers (wall display devices) with state and assigned live view ID. |
+| `get_viewer` | 1 | Get one Protect viewer by ID (state, MAC, stream limit, assigned live view). |
+| `set_viewer_liveview` | 1 | Assign a live view to a Protect viewer (wall display). Pass liveview_id=None to clear the assignment. |
 
 ### Protect: devices
 
 | Tool | Tier | Description |
 |---|---|---|
+| `list_protect_devices` | 1 | List Protect accessory devices of one kind (read-only). |
+| `get_protect_device` | 1 | Get one Protect accessory device by kind and id (read-only). |
+| `update_protect_device` | 2 | Update settings on a Protect accessory device. Requires confirm=True after previewing. |
+| `run_protect_device_action` | 2 | Run a physical action on a Protect accessory. Requires confirm=True after previewing. |
+| `list_protect_users` | 1 | List Protect users and UniFi Identity (ULP) users with minimal fields (read-only). |
 | `list_nvrs` | 1 | List Protect NVRs (Network Video Recorders) registered to this console. |
 | `get_nvr_stats` | 1 | Get the full NVR record (storage, system stats, doorbell settings). |
 | `reboot_camera` | 2 | Reboot a Protect camera. Currently unavailable via API key. |
+
+### Protect: security
+
+| Tool | Tier | Description |
+|---|---|---|
+| `list_arm_profiles` | 1 | List Alarm Manager arm profiles (name, automations, schedules, activation delay). |
+| `get_alarm_status` | 1 | Get the current alarm arm state: status (arming/armed/breach/disabled), timestamps, breach details. |
+| `arm_alarm` | 2 | Arm the Protect alarm using the active arm profile. Tier 2, requires confirm=True after preview. |
+| `disarm_alarm` | 2 | Disarm the Protect alarm. Tier 2, requires confirm=True after preview. |
+| `set_active_arm_profile` | 2 | Select which arm profile is active (does not arm). Tier 2, requires confirm=True after preview. |
+| `create_arm_profile` | 2 | Create an arm profile. Defaults: no automations, no schedules, record_everything=False, activation_delay=0. |
+| `update_arm_profile` | 2 | Update an arm profile. updates may contain name, automations, schedules, recordEverything, activationDelay (ms). Tier 2. |
+| `delete_arm_profile` | 2 | Delete an arm profile. Irreversible. Tier 2, requires confirm=True after preview. |
+| `trigger_alarm_webhook` | 2 | Fire an Alarm Manager webhook trigger by its ID. Tier 2, requires confirm=True after preview. |
