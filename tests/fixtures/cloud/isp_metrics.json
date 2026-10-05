@@ -1,0 +1,1 @@
+{"data":[{"metricType":"5m","hostId":"00000000000000000000000000000001:111111111","siteId":"aaaaaaaaaaaaaaaaaaaaaaa1","periods":[{"metricTime":"2026-06-15T07:00:00Z","data":{"wan":{"avgLatency":12,"maxLatency":30,"packetLoss":0,"download_kbps":250000,"upload_kbps":20000,"uptime":300,"downtime":0,"ispName":"Example ISP","ispAsn":"64496"}}}]}],"httpStatusCode":200,"traceId":"t"}

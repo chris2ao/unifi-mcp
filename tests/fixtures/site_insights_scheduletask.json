@@ -1,0 +1,16 @@
+{
+  "meta": {
+    "rc": "ok"
+  },
+  "data": [
+    {
+      "_id": "00000000-0000-0000-0000-0000000000a7",
+      "name": "Nightly upgrade",
+      "action": "upgrade",
+      "cron_expr": "0 3 * * *",
+      "timezone": "UTC",
+      "execute_only_once": false,
+      "site_id": "x"
+    }
+  ]
+}

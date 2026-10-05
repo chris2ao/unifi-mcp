@@ -1,0 +1,33 @@
+{
+  "offset": 0,
+  "limit": 25,
+  "count": 2,
+  "totalCount": 2,
+  "data": [
+    {
+      "id": "00000000-0000-0000-0000-0000000000a1",
+      "name": "Guest Phone",
+      "type": "WIRELESS",
+      "connectedAt": "2026-01-01T10:00:00Z",
+      "ipAddress": "192.0.2.50",
+      "macAddress": "aa:bb:cc:00:00:01",
+      "uplinkDeviceId": "00000000-0000-0000-0000-0000000000d1",
+      "access": {
+        "type": "GUEST",
+        "authorized": false
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-0000000000a2",
+      "name": "Office Laptop",
+      "type": "WIRED",
+      "connectedAt": "2026-01-01T09:00:00Z",
+      "ipAddress": "192.0.2.51",
+      "macAddress": "aa:bb:cc:00:00:02",
+      "uplinkDeviceId": "00000000-0000-0000-0000-0000000000d1",
+      "access": {
+        "type": "DEFAULT"
+      }
+    }
+  ]
+}

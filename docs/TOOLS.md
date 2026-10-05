@@ -12,15 +12,17 @@ Loaders register tools by group, for example `load_network_tools(groups=["core"]
 
 | Product | Group | Tools | Tier 1 | Tier 2 |
 |---|---|---:|---:|---:|
-| Network | core | 54 | 35 | 19 |
-| Network | insights | 11 | 11 | 0 |
-| Network | security | 57 | 22 | 35 |
-| **Network** | **all** | **122** | **68** | **54** |
+| Network | core | 76 | 53 | 23 |
+| Network | insights | 22 | 22 | 0 |
+| Network | security | 59 | 23 | 36 |
+| **Network** | **all** | **157** | **98** | **59** |
 | Protect | cameras | 23 | 18 | 5 |
 | Protect | devices | 8 | 5 | 3 |
 | Protect | security | 9 | 2 | 7 |
 | **Protect** | **all** | **40** | **25** | **15** |
-| **Total** | | **162** | **93** | **69** |
+| Site Manager (cloud) | cloud | 9 | 9 | 0 |
+| **Site Manager (cloud)** | **all** | **9** | **9** | **0** |
+| **Total** | | **206** | **132** | **74** |
 
 ## Network
 
@@ -41,6 +43,10 @@ Loaded by `load_network_tools`.
 | `set_client_alias` | 1 | Set a friendly name (alias) for a client. Tier 1, cosmetic change. |
 | `list_all_clients` | 1 | List all known clients (historical, including offline). |
 | `get_client_history` | 1 | Get per-client usage history at the given report interval. |
+| `list_recent_clients` | 1 | List known clients seen recently, including offline ones, newest first. |
+| `get_client_v1` | 1 | Get a client from the official API by Integration id (UUID) or MAC. |
+| `authorize_guest` | 2 | Authorize a guest client for network access (guest portal bypass). Requires confirm=True after previewing. |
+| `unauthorize_guest` | 2 | Revoke a guest client's network access and disconnect it. Requires confirm=True after previewing. |
 | `get_device_statistics` | 1 | Get latest live statistics for one adopted device (Integration API). |
 | `get_device_details_v1` | 1 | Get Integration API details for one adopted device. |
 | `list_pending_devices` | 1 | List devices waiting to be adopted (Integration API, console-wide). |
@@ -59,6 +65,24 @@ Loaded by `load_network_tools`.
 | `get_device_uplinks` | 1 | Get uplink information for a device. |
 | `list_vouchers` | 1 | List all guest network vouchers. |
 | `create_voucher` | 1 | Create guest network vouchers. Tier 1 (creates access credentials, not destructive). |
+| `list_vouchers_v1` | 1 | List hotspot vouchers from the official API with limits, usage and expiry, optionally filtered. |
+| `get_voucher` | 1 | Get one hotspot voucher by id (code, limits, guest usage, expiry). |
+| `delete_voucher` | 2 | Delete one hotspot voucher by id. Guests authorized by it lose access. Requires confirm=True after previewing. |
+| `delete_vouchers` | 2 | Delete every hotspot voucher matching a filter expression, such as expired.eq(true) or name.eq('hotel-guest'). |
+| `list_wans` | 1 | List the site's WAN interfaces (id and name). Use to get a WAN id for other tools. |
+| `list_site_to_site_tunnels` | 1 | List site-to-site VPN tunnels (id, name, type IPSEC/OPENVPN/WIREGUARD, origin). |
+| `list_device_tags` | 1 | List device tags with the ids of the devices carrying each tag (used by WiFi broadcast filters). |
+| `search_dpi_applications` | 1 | Search the DPI application catalog (about 2,100 apps) by name substring, case-insensitive. |
+| `list_dpi_categories` | 1 | List DPI application categories (integer id and name). |
+| `list_countries` | 1 | List countries (ISO 3166-1 alpha-2 code and name), optionally filtered. |
+| `list_switch_stacks` | 1 | List switch stacks (id, name, member units with roles, stack LAG ids). |
+| `get_switch_stack` | 1 | Get one switch stack by id (units, roles, LAG ids). |
+| `list_lags` | 1 | List link aggregation groups (type LOCAL, SWITCH_STACK or MULTI_CHASSIS, with member ports). |
+| `get_lag` | 1 | Get one link aggregation group by id (type and member ports). |
+| `list_mc_lag_domains` | 1 | List multi-chassis LAG domains (peers with TOP/BOTTOM roles and member LAGs). |
+| `get_mc_lag_domain` | 1 | Get one multi-chassis LAG domain by id (peers and LAGs). |
+| `list_radius_profiles_v1` | 1 | List RADIUS profiles from the official API (id, name, origin only; no secrets). |
+| `list_vpn_servers_v1` | 1 | List VPN servers from the official API (id, name, type, enabled, origin). |
 | `list_networks` | 1 | List all configured networks/VLANs. |
 | `get_network` | 1 | Get details for a specific network by ID. |
 | `create_network` | 2 | Create a new network/VLAN. Requires confirm=True after previewing. |
@@ -94,6 +118,17 @@ Loaded by `load_network_tools`.
 | `get_dashboard_summary` | 1 | Get a one-call health overview of the network (the UniFi dashboard, summarized). |
 | `get_speedtest_history` | 1 | Get WAN speed test history, newest first, with an average summary. |
 | `get_wan_status` | 1 | Get the live state of each WAN uplink (ACTIVE, BACKUP, ...) with names and ids. |
+| `get_routing_table` | 1 | Get the gateway's live routing table (kernel routes with next hops). |
+| `list_static_routes` | 1 | List user-defined static routes (destination network, next hop, distance). |
+| `list_traffic_routes` | 1 | List policy-based (traffic) routes that steer matching traffic to a WAN or VPN. |
+| `list_nat_rules` | 1 | List NAT rules (masquerade, source NAT, destination NAT) configured on the gateway. |
+| `list_content_filters` | 1 | List content filtering profiles (blocked categories, allow/block lists, safe search). |
+| `list_neighbor_aps` | 1 | List neighboring Wi-Fi access networks seen by your APs, strongest signal first. |
+| `get_site_traffic_history` | 1 | Get site-wide WAN traffic and client-count history from the controller's reports. |
+| `list_vpn_connections` | 1 | List active VPN connections and WireGuard users (no keys or secrets returned). |
+| `list_scheduled_tasks` | 1 | List scheduled controller tasks (cron-style jobs such as firmware or backup runs). |
+| `list_dynamic_dns` | 1 | List dynamic DNS (DDNS) entries; passwords and login secrets are masked. |
+| `get_site_settings` | 1 | Get site settings: without section, list the section keys; with section, return it. |
 | `list_traffic_flows` | 1 | List recent network traffic flows (per-connection records), sorted newest first. |
 | `get_top_talkers` | 1 | Rank top traffic talkers by bytes over the last `minutes` (default 60). |
 | `filter_flows_by_app` | 1 | Find traffic flows for an application, service or domain by name. |
@@ -121,6 +156,8 @@ Loaded by `load_network_tools`.
 | `list_mac_filter` | 1 | List all MAC ACL filter rules. |
 | `add_mac_filter` | 2 | Add a new MAC ACL filter rule. Requires confirm=True after previewing. |
 | `delete_mac_filter` | 2 | Delete a MAC ACL filter rule. Requires confirm=True after previewing. |
+| `get_acl_rule_order` | 1 | Get the evaluation order of user-defined ACL rules (first id is evaluated first). |
+| `reorder_acl_rules` | 2 | Set the evaluation order of ACL rules. ordered_rule_ids must list every current rule id exactly once. |
 | `list_port_forwards` | 1 | List all port forwarding rules. |
 | `create_port_forward` | 2 | Create a new port forwarding rule. Requires confirm=True after previewing. |
 | `update_port_forward` | 2 | Update an existing port forwarding rule. Requires confirm=True after previewing. |
@@ -221,3 +258,21 @@ Loaded by `load_protect_tools`.
 | `update_arm_profile` | 2 | Update an arm profile. updates may contain name, automations, schedules, recordEverything, activationDelay (ms). Tier 2. |
 | `delete_arm_profile` | 2 | Delete an arm profile. Irreversible. Tier 2, requires confirm=True after preview. |
 | `trigger_alarm_webhook` | 2 | Fire an Alarm Manager webhook trigger by its ID. Tier 2, requires confirm=True after preview. |
+
+## Site Manager (cloud)
+
+Loaded by `load_cloud_tools`.
+
+### Site Manager (cloud): cloud
+
+| Tool | Tier | Description |
+|---|---|---|
+| `list_cloud_hosts` | 1 | List all UniFi consoles and network servers (hosts) on the cloud account. Use first to find host IDs for other cloud tools. |
+| `get_cloud_host` | 1 | Get one cloud host (console) by host_id as returned by list_cloud_hosts, including reported state and owner info. |
+| `list_cloud_sites` | 1 | List all sites across the cloud account with hostId, siteId, metadata, statistics (device and client counts) and permission. |
+| `list_cloud_devices` | 1 | List UniFi devices grouped by host across the cloud account. Optionally limit to host_ids (list of host IDs from list_cloud_hosts). |
+| `get_isp_metrics` | 1 | Get ISP metrics (latency, packet loss, up/down kbps, uptime, downtime) for all cloud sites. metric_type '5m' (last 24h available) or '1h' (30 days). Use duration ('24h' for 5m; '7d' or '30d' for 1h) or begin/end RFC3339 timestamps, not both. Output is raw periods per site (about 720 for '1h' over 30d), so prefer short windows. |
+| `query_isp_metrics` | 1 | Query ISP metrics for specific sites (read-only POST query). metric_type '5m' or '1h'. sites is a list of {hostId, siteId, beginTimestamp?, endTimestamp?} from list_cloud_sites; timestamps are RFC3339. A status of partialSuccess means some sites were not accessible. |
+| `list_sdwan_configs` | 1 | List SD-WAN configurations (id, name, type) on the cloud account. |
+| `get_sdwan_config` | 1 | Get one SD-WAN configuration by config_id from list_sdwan_configs, including hubs, spokes and connections. |
+| `get_sdwan_status` | 1 | Get live deployment status of an SD-WAN configuration (hub and spoke WAN status, latency, fingerprint, last update) by config_id. |

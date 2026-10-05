@@ -1,0 +1,21 @@
+[
+  {
+    "_id": "00000000-0000-0000-0000-0000000000a2",
+    "description": "Office via VPN",
+    "enabled": true,
+    "matching_target": "DOMAIN",
+    "network_id": "00000000-0000-0000-0000-0000000000b1",
+    "domains": [
+      {
+        "domain": "example.com"
+      }
+    ],
+    "target_devices": [
+      {
+        "client_mac": "aa:bb:cc:00:00:01",
+        "type": "CLIENT"
+      }
+    ],
+    "kill_switch_enabled": true
+  }
+]

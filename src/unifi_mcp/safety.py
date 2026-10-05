@@ -67,6 +67,12 @@ _LEGACY_TIER2_BY_MODULE: dict[str, dict[str, str]] = {
     "network.clients": {
         "block_client": "clients",
         "unblock_client": "clients",
+        "authorize_guest": "clients",
+        "unauthorize_guest": "clients",
+    },
+    "network.hotspot": {
+        "delete_voucher": "hotspot",
+        "delete_vouchers": "hotspot",
     },
     # WiFi mutations (toggle can disrupt wireless clients)
     "network.wifi": {
@@ -108,6 +114,7 @@ _LEGACY_TIER2_BY_MODULE: dict[str, dict[str, str]] = {
     "network.mac_acl": {
         "add_mac_filter": "mac_acl",
         "delete_mac_filter": "mac_acl",
+        "reorder_acl_rules": "mac_acl",
     },
     # Protect camera actions (stubs or real, they take confirm)
     "protect.cameras": {

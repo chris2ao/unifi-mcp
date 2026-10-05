@@ -5,6 +5,58 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.8.0] - 2026-10-04
+
+Network insights, the remaining official Network endpoints, and an optional Site Manager (cloud) tool set. Network goes from 122 tools to 157, and 9 read-only cloud tools are added behind a new `load_cloud_tools` loader (8 always-loaded tools, 214 in total with everything loaded). Network OpenAPI coverage rises from 46.6% to 78.1% (57 of 73) and Site Manager coverage from 0% to 64.3% (9 of 14). Tested on UniFi Network 10.6.106 and UniFi Protect 7.2.105. The cloud tools were verified with mocked tests only.
+
+### Added
+
+- Routing (group `insights`, module `routing`, all Tier 1): `get_routing_table`, `list_static_routes` (reports `route_type`: nexthop-route, interface-route or blackhole), `list_traffic_routes`, `list_nat_rules`.
+- Site insights (group `insights`, module `site_insights`, all Tier 1): `list_content_filters`, `list_neighbor_aps`, `get_site_traffic_history`, `list_vpn_connections`, `list_scheduled_tasks`, `list_dynamic_dns`, `get_site_settings`. These use internal or legacy endpoints and fail soft with an error dict naming the endpoint.
+- Clients: `list_recent_clients` (timestamped client history, Tier 1), `get_client_v1` (official API, by UUID or MAC, Tier 1), `authorize_guest` and `unauthorize_guest` (Tier 2, guest portal bypass with optional time, data and rate limits).
+- Hotspot: `list_vouchers_v1`, `get_voucher` (Tier 1), `delete_voucher` and `delete_vouchers` (Tier 2; `delete_vouchers` requires a filter and previews the matching vouchers).
+- MAC ACL: `get_acl_rule_order` (Tier 1) and `reorder_acl_rules` (Tier 2).
+- Lookups (group `core`, module `lookups`, all Tier 1, 14 tools): `list_wans`, `list_site_to_site_tunnels`, `list_device_tags`, `search_dpi_applications`, `list_dpi_categories`, `list_countries`, `list_switch_stacks`, `get_switch_stack`, `list_lags`, `get_lag`, `list_mc_lag_domains`, `get_mc_lag_domain`, `list_radius_profiles_v1`, `list_vpn_servers_v1`.
+- Site Manager cloud tools (package `unifi_mcp.cloud`, tools in `tools/cloud`, all Tier 1): `list_cloud_hosts`, `get_cloud_host`, `list_cloud_sites`, `list_cloud_devices`, `get_isp_metrics`, `query_isp_metrics`, `list_sdwan_configs`, `get_sdwan_config`, `get_sdwan_status`.
+- `load_cloud_tools`, the eighth always-loaded tool. It registers the cloud tools on demand and needs `UNIFI_CLOUD_API_KEY` (a unifi.ui.com key, separate from `UNIFI_API_KEY`). `UNIFI_CLOUD_BASE_URL` is optional and must be https on `ui.com`.
+- Test fixtures for the new tools, including `tests/fixtures/cloud/`, and a test that calls the error path of list-returning tools through a FastMCP client.
+
+### Changed
+
+- `UNIFI_CLOUD_API_KEY` is read as a `SecretStr` and never appears in reprs or errors. Cloud 429 responses raise `CloudRateLimitError` (category `CONNECTION_ERROR`) with `rate_limited: true` and `retry_after_seconds`.
+- `list_vouchers_v1`, `search_dpi_applications`, `list_countries`, `list_cloud_devices` and `get_isp_metrics` are annotated `list[dict] | dict` so a validation error is delivered as the error dict instead of failing output schema validation.
+- Tier 2 map: `authorize_guest`, `unauthorize_guest` (cache category `clients`), `delete_voucher`, `delete_vouchers` (`hotspot`) and `reorder_acl_rules` (`mac_acl`) were added to the legacy map in `safety.py`.
+- `get_cloud_host` returns `NOT_FOUND` unless the returned host id matches the requested id.
+- `unauthorize_guest` returns `executed: false` with a message for a guest that is not authorized, and the `authorize_guest` preview adds an `impact` line when the guest is already authorized.
+- `delete_vouchers` previews cap counting at 5000 and report `count_capped`. A filter with no matches returns `matched: 0` instead of a preview.
+- Tests that used a real console address now use `192.0.2.1`.
+- Tests that import `unifi_mcp.server` use a shared session fixture in `tests/conftest.py` that supplies placeholder `UNIFI_HOST` and `UNIFI_API_KEY` values, so the suite passes in CI where neither is set.
+
+### Fixed
+
+- HTTP 429 from the console is now retried. UniFi Protect's Integration API allows 10 requests per second and answers bursts with `429` and `Retry-After: 1` (measured on Protect 7.2.105), which made back-to-back Protect calls fail with a generic `CONNECTION_ERROR` and could make `load_protect_tools` report "not installed". `UnifiClient` now retries up to 3 times, honoring `Retry-After` capped at 5 seconds (exponential backoff when the header is missing or not numeric), then raises the new `RATE_LIMITED` error category. A rate-limited product probe now tells the caller to retry instead of claiming the product is missing.
+- Cloud id validation accepted `.`, which httpx normalizes away, so `get_cloud_host(".")` returned the first console on the account. Ids must now start with a letter or digit.
+- `get_client_v1`, `authorize_guest` and `unauthorize_guest` looked up a client by MAC with a filtered list and used the first row without checking it. The MAC is now verified, so a firmware that ignores the filter cannot cause the wrong guest to be authorized or disconnected.
+- The `delete_voucher` preview read the voucher through a 30 second cache and could miss a redemption. It now reads live.
+- Cloud timestamp validation requires an RFC3339 time with an offset (date-only and offset-less values are rejected locally).
+- Cloud pagination logs a warning when it stops at the 20 page limit with more data pending.
+- In-place list mutation was replaced with new objects in `list_recent_clients`, `search_dpi_applications`, `list_vpn_connections` and cloud pagination.
+
+### Security
+
+- `get_site_settings`, `list_dynamic_dns` and `list_vpn_connections` now also mask fields named like `community` (SNMP community strings), `signature` (for example `paypal_signature`), `private`, `certificate` and `configuration` (inline VPN configs), and `pem`, `cert` and `ca`, in addition to pass, secret, key, token, psk and `x_` names.
+- Neighbor AP SSIDs are stripped of control characters and capped at 64 characters, and the docstring marks them as untrusted text from outside the network.
+- `delete_vouchers` rejects an empty filter so it cannot delete every voucher, and the guest and voucher previews perform read-only lookups only.
+
+### Notes
+
+- Migration: no breaking changes to existing tools. `load_cloud_tools` adds one always-loaded tool, so the startup count is 8. The cloud tools do nothing unless `UNIFI_CLOUD_API_KEY` is set.
+- Routing and site insight tools return empty lists on the test console for features that are not configured (static and traffic routes, NAT, DDNS, VPN, WireGuard), so their shapes come from tolerant formatting rather than live data. The legacy `rest/account` endpoint is deliberately not exposed because it holds `x_password`.
+- `get_site_traffic_history` issues a read-only report query by POST. `list_neighbor_aps` sorts and filters on `signal` (dBm); the `rssi` field on the test console is a positive quality value.
+- The official filter `name.like()` is case-sensitive and prefix-only, so `search_dpi_applications` and `list_countries` page the catalog (cached for an hour) and match substrings client-side. `clients/history` ignores `limit`, so `list_recent_clients` applies it client-side.
+- Deferred review items: response size caps or summaries for `get_isp_metrics` and long `get_site_traffic_history` windows, moving the shared insight helpers into a common module, an allowlist for the `list_vpn_connections` `details` field, mapping cloud 429 responses to the new `RATE_LIMITED` category (the local client already uses it), and splitting `clients.py` (now over 400 lines).
+- Site Manager connector proxy endpoints (`/v1/connector/consoles/{id}/*`) are not implemented.
+
 ## [0.7.0] - 2026-10-04
 
 UniFi Protect expansion: PTZ presets and patrols, camera settings, RTSPS streams, Alarm Manager, live views and viewers, accessory devices, and live event streams. Protect goes from 11 tools to 40. Tested on UniFi Protect 7.2.105 (spec 7.3.70) and UniFi Network 10.6.106.
@@ -219,6 +271,7 @@ This release was driven by a real-world incident on 2026-04-18 where an offline 
 - Lazy per-product tool loading to keep the initial tool list small.
 - Claude Code plugin bundle with installation guide, setup instructions, and API reference.
 
+[0.8.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.8.0
 [0.7.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.7.0
 [0.6.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.6.0
 [0.5.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.5.0

@@ -323,7 +323,7 @@ async def test_create_voucher(mock_client):
 
 def test_hotspot_tools_list():
     from unifi_mcp.tools.network.hotspot import TOOLS
-    assert len(TOOLS) == 2
+    assert len(TOOLS) == 6
 
 
 # --- MAC ACL ---
@@ -401,7 +401,7 @@ async def test_delete_mac_filter_confirm(mock_client):
 
 def test_mac_acl_tools_list():
     from unifi_mcp.tools.network.mac_acl import TOOLS
-    assert len(TOOLS) == 3
+    assert len(TOOLS) == 5
 
 
 # --- QoS ---

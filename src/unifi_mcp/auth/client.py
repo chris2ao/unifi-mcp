@@ -1,3 +1,5 @@
+import asyncio
+import math
 from typing import Any
 from urllib.parse import urlencode
 
@@ -12,6 +14,40 @@ from unifi_mcp.errors import UnifiError, ErrorCategory, status_to_category
 # that allows 1000, so 200 is the safe default and 1000 the hard ceiling.
 INTEGRATION_PAGE_SIZE = 200
 INTEGRATION_PAGE_SIZE_MAX = 1000
+
+# Protect's Integration API allows 10 requests per second and answers bursts
+# with HTTP 429 plus `Retry-After: 1` (verified on Protect 7.2.105). Retry a
+# bounded number of times, honoring Retry-After but never waiting longer than
+# the cap, then surface RATE_LIMITED to the caller.
+RATE_LIMIT_RETRIES = 3
+RATE_LIMIT_MAX_WAIT_SECONDS = 5.0
+
+
+def _retry_wait_seconds(response: httpx.Response, attempt: int) -> float:
+    """Seconds to wait before retry `attempt` (0-based) of a 429 response.
+
+    Uses a numeric Retry-After header when it is finite and positive, otherwise
+    exponential backoff (1, 2, 4 seconds). Never exceeds the cap.
+    """
+    backoff = float(2 ** attempt)
+    try:
+        wait = float(response.headers.get("retry-after", ""))
+    except ValueError:
+        wait = backoff
+    if not math.isfinite(wait) or wait <= 0:
+        wait = backoff
+    return min(wait, RATE_LIMIT_MAX_WAIT_SECONDS)
+
+
+def _status_error(category: ErrorCategory, method: str, path: str, status: int) -> UnifiError:
+    """Build the UnifiError for a mapped HTTP error status."""
+    message = f"{method} {path} returned {status}"
+    if category == ErrorCategory.RATE_LIMITED:
+        message += (
+            f" after {RATE_LIMIT_RETRIES} retries (the console is rate limiting "
+            "requests; wait a few seconds and retry)"
+        )
+    return UnifiError(category, message, endpoint=path)
 
 
 def _clean_params(params: dict[str, Any] | None) -> dict[str, Any]:
@@ -136,17 +172,12 @@ class UnifiClient:
         """
         resolved = await self._resolve_path(path)
         try:
-            response = await self._http.request("GET", resolved)
-            self.discovery.log(resolved, "GET", response.status_code)
+            response = await self._send("GET", resolved)
 
             if response.status_code >= 400:
                 category = status_to_category(response.status_code)
                 if category:
-                    raise UnifiError(
-                        category,
-                        f"GET {resolved} returned {response.status_code}",
-                        endpoint=resolved,
-                    )
+                    raise _status_error(category, "GET", resolved, response.status_code)
                 response.raise_for_status()
 
             return response.content, response.headers.get("content-type", "")
@@ -233,6 +264,20 @@ class UnifiClient:
             endpoint="/proxy/network/integration/v1/sites",
         )
 
+    async def _send(self, method: str, path: str, **kwargs: Any) -> httpx.Response:
+        """Send one request, retrying HTTP 429 with bounded Retry-After waits.
+
+        Every attempt is logged to the discovery registry. The final response is
+        returned as-is; a persistent 429 maps to RATE_LIMITED in the callers.
+        """
+        for attempt in range(RATE_LIMIT_RETRIES + 1):
+            response = await self._http.request(method, path, **kwargs)
+            self.discovery.log(path, method, response.status_code)
+            if response.status_code != 429 or attempt == RATE_LIMIT_RETRIES:
+                return response
+            await asyncio.sleep(_retry_wait_seconds(response, attempt))
+        return response
+
     async def _request(
         self,
         method: str,
@@ -242,17 +287,12 @@ class UnifiClient:
     ) -> dict:
         """Execute an HTTP request with error handling and discovery logging."""
         try:
-            response = await self._http.request(method, path, json=json, params=params)
-            self.discovery.log(path, method, response.status_code)
+            response = await self._send(method, path, json=json, params=params)
 
             if response.status_code >= 400:
                 category = status_to_category(response.status_code)
                 if category:
-                    raise UnifiError(
-                        category,
-                        f"{method} {path} returned {response.status_code}",
-                        endpoint=path,
-                    )
+                    raise _status_error(category, method, path, response.status_code)
                 response.raise_for_status()
 
             content_type = response.headers.get("content-type", "")

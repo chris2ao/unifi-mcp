@@ -1,0 +1,51 @@
+[
+  {
+    "id": "aa:bb:cc:00:00:03",
+    "user_id": "000000000000000000000a03",
+    "mac": "aa:bb:cc:00:00:03",
+    "display_name": "Old Tablet",
+    "hostname": "old-tablet",
+    "type": "WIRELESS",
+    "is_wired": false,
+    "is_guest": false,
+    "blocked": false,
+    "status": "offline",
+    "first_seen": 1700000000,
+    "last_seen": 1790000000,
+    "last_ip": "192.0.2.60",
+    "last_connection_network_id": "000000000000000000000b01",
+    "last_connection_network_name": "Main LAN",
+    "last_uplink_mac": "aa:bb:cc:00:00:d1",
+    "last_uplink_name": "Office AP",
+    "oui": "ExampleCo"
+  },
+  {
+    "id": "aa:bb:cc:00:00:04",
+    "user_id": "000000000000000000000a04",
+    "mac": "aa:bb:cc:00:00:04",
+    "hostname": "printer",
+    "type": "WIRED",
+    "is_wired": true,
+    "is_guest": false,
+    "blocked": true,
+    "status": "offline",
+    "first_seen": 1700000100,
+    "last_seen": 1791000000,
+    "last_ip": "192.0.2.61",
+    "last_connection_network_name": "IoT",
+    "last_uplink_mac": "aa:bb:cc:00:00:d2",
+    "last_uplink_name": "Core Switch"
+  },
+  {
+    "id": "aa:bb:cc:00:00:05",
+    "user_id": "000000000000000000000a05",
+    "mac": "aa:bb:cc:00:00:05",
+    "display_name": "Visitor",
+    "type": "WIRELESS",
+    "is_wired": false,
+    "is_guest": true,
+    "status": "offline",
+    "first_seen": 1700000200,
+    "last_seen": 1780000000
+  }
+]

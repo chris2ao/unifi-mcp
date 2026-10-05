@@ -11,6 +11,7 @@ class ErrorCategory(StrEnum):
     FIRMWARE_UNSUPPORTED = "FIRMWARE_UNSUPPORTED"
     UNEXPECTED_RESPONSE = "UNEXPECTED_RESPONSE"
     PREVIEW_REQUIRED = "PREVIEW_REQUIRED"
+    RATE_LIMITED = "RATE_LIMITED"
 
 
 _STATUS_MAP: dict[int, ErrorCategory] = {
@@ -19,6 +20,7 @@ _STATUS_MAP: dict[int, ErrorCategory] = {
     403: ErrorCategory.AUTH_ERROR,
     404: ErrorCategory.NOT_FOUND,
     409: ErrorCategory.CONFLICT,
+    429: ErrorCategory.RATE_LIMITED,
 }
 
 

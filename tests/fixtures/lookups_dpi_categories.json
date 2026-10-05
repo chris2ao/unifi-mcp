@@ -1,0 +1,16 @@
+{
+  "offset": 0,
+  "limit": 25,
+  "count": 2,
+  "totalCount": 2,
+  "data": [
+    {
+      "id": 3,
+      "name": "Network protocols"
+    },
+    {
+      "id": 5,
+      "name": "Business tools"
+    }
+  ]
+}

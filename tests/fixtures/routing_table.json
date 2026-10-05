@@ -1,0 +1,32 @@
+{
+  "items": [
+    {
+      "destination": "0.0.0.0/0",
+      "nexthops": [
+        {
+          "in_use": true,
+          "interface": "eth8",
+          "weight": 1,
+          "via": "198.51.100.1"
+        }
+      ],
+      "origin": "dhcp",
+      "scope": 0,
+      "type": "unicast"
+    },
+    {
+      "destination": "10.0.0.0/24",
+      "nexthops": [
+        {
+          "in_use": true,
+          "interface": "br0",
+          "weight": 1
+        }
+      ],
+      "origin": "kernel",
+      "scope": 253,
+      "type": "unicast"
+    }
+  ],
+  "truncated": false
+}

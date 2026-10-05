@@ -11,12 +11,12 @@ from unifi_mcp.cache import TTLCache
 from unifi_mcp.config import UnifiConfig
 
 FIXTURES = Path(__file__).parent.parent / "fixtures"
-COLLECTION_URL = "https://172.16.27.1/proxy/network/v2/api/site/default/trafficrules"
+COLLECTION_URL = "https://192.0.2.1/proxy/network/v2/api/site/default/trafficrules"
 
 
 @pytest.fixture
 def config(monkeypatch):
-    monkeypatch.setenv("UNIFI_HOST", "https://172.16.27.1")
+    monkeypatch.setenv("UNIFI_HOST", "https://192.0.2.1")
     monkeypatch.setenv("UNIFI_API_KEY", "test-key")
     return UnifiConfig()
 

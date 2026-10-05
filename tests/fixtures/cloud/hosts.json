@@ -1,0 +1,1 @@
+{"data":[{"id":"00000000000000000000000000000001:111111111","hardwareId":"hw-0001","type":"console","ipAddress":"198.51.100.10","owner":true,"isBlocked":false,"registrationTime":"2024-01-01T00:00:00Z","reportedState":{"name":"Office Console","hostname":"office-console"}}],"httpStatusCode":200,"traceId":"trace-1","nextToken":"tok2"}

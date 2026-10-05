@@ -1,0 +1,15 @@
+{
+  "offset": 0,
+  "limit": 25,
+  "count": 1,
+  "totalCount": 1,
+  "data": [
+    {
+      "id": "00000000-0000-0000-0000-000000000071",
+      "name": "Default RADIUS",
+      "metadata": {
+        "origin": "SYSTEM_DEFINED"
+      }
+    }
+  ]
+}

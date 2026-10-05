@@ -1,0 +1,41 @@
+{
+  "id": "00000000-0000-0000-0000-000000000061",
+  "name": "Core MC-LAG",
+  "peers": [
+    {
+      "role": "TOP",
+      "deviceId": "00000000-0000-0000-0000-0000000000d1",
+      "linkPortIdxs": [
+        25,
+        26
+      ]
+    },
+    {
+      "role": "BOTTOM",
+      "deviceId": "00000000-0000-0000-0000-0000000000d2",
+      "linkPortIdxs": [
+        25,
+        26
+      ]
+    }
+  ],
+  "lags": [
+    {
+      "id": "00000000-0000-0000-0000-000000000062",
+      "members": [
+        {
+          "deviceId": "00000000-0000-0000-0000-0000000000d1",
+          "portIdxs": [
+            5
+          ]
+        }
+      ],
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    }
+  ],
+  "metadata": {
+    "origin": "USER_DEFINED"
+  }
+}

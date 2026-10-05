@@ -15,6 +15,7 @@ from unifi_mcp.config import UnifiConfig
 from unifi_mcp.cache import TTLCache
 from unifi_mcp.auth.client import UnifiClient
 from unifi_mcp.auth.discovery import DiscoveryRegistry
+from unifi_mcp.cloud_loader import register_cloud_loader
 from unifi_mcp.safety import SafetyManager
 from unifi_mcp.tools._registry import (
     PRODUCT_PROBES,
@@ -210,7 +211,11 @@ async def _probe_product(product: str) -> bool:
         return False
     try:
         result = await client.get(probe_path)
-    except UnifiError:
+    except UnifiError as err:
+        # A rate-limited probe says nothing about whether the product exists;
+        # let the loader report it instead of claiming "not installed".
+        if err.category == ErrorCategory.RATE_LIMITED:
+            raise
         return False
     return isinstance(result, (dict, list))
 
@@ -234,8 +239,18 @@ async def _register_groups(product: str, groups: list[str] | None, ctx: Context 
     if error:
         return error
 
-    if not registry.is_loaded(product) and not await _probe_product(product):
-        return f"UniFi {product.title()} is not installed on this console."
+    if not registry.is_loaded(product):
+        try:
+            installed = await _probe_product(product)
+        except UnifiError as err:
+            if err.category != ErrorCategory.RATE_LIMITED:
+                raise
+            return (
+                f"UniFi {product.title()} probe was rate limited by the console "
+                f"(HTTP 429 on {err.endpoint}). Wait a few seconds and call the loader again."
+            )
+        if not installed:
+            return f"UniFi {product.title()} is not installed on this console."
     if registry.is_loaded(product) and selected <= registry.loaded_groups(product):
         names = ", ".join(sorted(selected)) or "none"
         return f"{product.title()} tools already loaded (groups: {names})."
@@ -429,6 +444,10 @@ async def get_mutation_log() -> list[dict]:
     resets when the server restarts.
     """
     return safety.get_mutation_log()
+
+
+# Optional Site Manager (cloud) tools: load_cloud_tools registers them on demand.
+register_cloud_loader(mcp)
 
 
 def main():

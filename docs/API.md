@@ -8,14 +8,14 @@ Tools marked with **(Tier 2)** use the preview-confirm pattern: call with `confi
 
 ## Utility Tools (Always Available)
 
-These 7 tools are registered at server startup, before any product loader is called. `load_cloud_tools` is added to this set when the Site Manager (cloud) tools ship in a later release.
+These 8 tools are registered at server startup, before any product loader is called.
 
 ### load_network_tools
 
 Load UniFi Network tools, optionally only some groups.
 
 - **Parameters:** `groups: list[str] | None = None`
-- **Groups:** `core` (system, devices, clients, networks, WiFi, topology, backups, hotspot, port profiles), `security` (firewall, zone-based firewall, DNS policies, traffic matching lists, MAC ACL, RADIUS, port forwarding, traffic rules, QoS, VPN, webhooks) and `insights` (DPI, traffic flows, dashboard summary, speed tests, WAN status).
+- **Groups:** `core` (system, devices, clients, networks, WiFi, topology, backups, hotspot, port profiles, lookups), `security` (firewall, zone-based firewall, DNS policies, traffic matching lists, MAC ACL, RADIUS, port forwarding, traffic rules, QoS, VPN, webhooks) and `insights` (DPI, traffic flows, dashboard summary, speed tests, WAN status, routing, site insights).
 - **Group syntax:** names may be passed bare (`"core"`), with the product prefix (`"network:core"`), or as `"all"`. Omit `groups` to use `UNIFI_TOOL_GROUPS`, or to load every group when that is unset.
 - **Incremental:** calling again with more groups registers only the new tools; reloading a loaded group is a no-op. An unknown group returns an `Unknown ... Available: ...` message and registers nothing.
 - **Returns:** `str` (summary of registered tools, or message if product not detected)
@@ -34,6 +34,15 @@ Load UniFi Protect tools, optionally only some groups.
 Load UniFi Access tools (door control, NFC/PIN credentials, visitor passes, access policies).
 
 - **Parameters:** None
+- **Returns:** `str`
+
+### load_cloud_tools
+
+Register the optional read-only UniFi Site Manager (cloud) tools. See [Site Manager (cloud)](#site-manager-cloud-9-tools).
+
+- **Parameters:** None
+- **Requires:** `UNIFI_CLOUD_API_KEY` (a unifi.ui.com cloud key, separate from `UNIFI_API_KEY`); optional `UNIFI_CLOUD_BASE_URL` (https on `ui.com` only). Without the key it returns setup instructions and registers nothing.
+- **Behavior:** idempotent; a second call reports the tools are already loaded. Cloud tools are not part of `list_tool_groups`.
 - **Returns:** `str`
 
 ### list_tool_groups
@@ -194,7 +203,7 @@ Use to recover a hung camera, AP or other PoE device. `device` is the switch's I
 
 ---
 
-## Clients (8 tools)
+## Clients (12 tools)
 
 Module: `tools/network/clients.py`
 
@@ -253,6 +262,36 @@ Get hourly usage history for a client.
 
 - **Parameters:** `mac: str`
 - **Returns:** `list[dict]` (raw hourly report data with rx_bytes, tx_bytes)
+
+### list_recent_clients
+
+List known clients seen recently, including offline ones, newest first (legacy `clients/history`).
+
+- **Parameters:** `limit: int = 100` (1 to 1000, applied client-side), `hours: int | None = None` (1 to 8760; omit for every known client, sent as `withinHours=0`)
+- **Returns:** `list[dict]` with keys: id (legacy user id), mac, name, hostname, type, is_wired, is_guest, blocked, first_seen, last_seen (epoch seconds), last_ip, last_network, last_network_id, last_uplink_mac, last_uplink_name. A validation problem returns a single error dict.
+
+### get_client_v1
+
+Get a client from the official Integration API.
+
+- **Parameters:** `client_ref: str` (Integration UUID or MAC)
+- **Returns:** `dict` with id, name, type (WIRED, WIRELESS, VPN, TELEPORT), mac, ip, connected_at, uplink_device_id, access_type (GUEST or DEFAULT), authorized, authorization, and `details` for extra fields. A MAC lookup is verified against the returned `macAddress`. Unknown clients return `NOT_FOUND`.
+
+### authorize_guest **(Tier 2)**
+
+Authorize a guest client (guest portal bypass).
+
+- **Parameters:** `client_ref: str`, `minutes: int | None` (1 to 1,000,000), `data_limit_mb: int | None` (1 to 1,048,576), `rx_kbps: int | None` and `tx_kbps: int | None` (2 to 100,000), `confirm: bool = False`
+- **Behavior:** the client must be a guest. Re-authorizing replaces the active authorization and resets traffic counters; the preview adds an `impact` line when the guest is already authorized.
+- **Returns:** `dict` (`executed`, `action`, `client_id`, `response`)
+
+### unauthorize_guest **(Tier 2)**
+
+Revoke a guest's access and disconnect the client.
+
+- **Parameters:** `client_ref: str`, `confirm: bool = False`
+- **Behavior:** when the guest is not authorized it returns `executed: false` with an explanatory message instead of a preview.
+- **Returns:** `dict`
 
 ---
 
@@ -733,7 +772,7 @@ Get DPI traffic breakdown for a specific client by MAC address.
 
 ---
 
-## Hotspot (2 tools)
+## Hotspot (6 tools)
 
 Module: `tools/network/hotspot.py`
 
@@ -751,9 +790,39 @@ Create guest network vouchers. Non-destructive (Tier 1).
 - **Parameters:** `expire_minutes: int = 1440`, `quota: int = 1`, `count: int = 1`, `note: str = ""`
 - **Returns:** `dict`
 
+### list_vouchers_v1
+
+List hotspot vouchers from the official API.
+
+- **Parameters:** `filter: str | None = None` (official filter, for example `expired.eq(false)`)
+- **Returns:** `list[dict]` of vouchers (id, code, name, limits, usage, expiry). Every match is returned (paginated automatically). An invalid filter returns a single error dict.
+
+### get_voucher
+
+Get one voucher by id.
+
+- **Parameters:** `voucher_id: str`
+- **Returns:** `dict` (code, limits, guest usage, expiry)
+
+### delete_voucher **(Tier 2)**
+
+Delete one voucher. Guests authorized with it lose access.
+
+- **Parameters:** `voucher_id: str`, `confirm: bool = False`
+- **Behavior:** the preview reads the voucher live (not cached) and states whether it is active.
+- **Returns:** `dict` (`executed`, `vouchers_deleted`)
+
+### delete_vouchers **(Tier 2)**
+
+Delete every voucher matching a filter.
+
+- **Parameters:** `filter: str` (required; an empty filter is rejected), `confirm: bool = False`
+- **Behavior:** the preview returns `match_count`, a 20 item sample and the number of active vouchers. Counting stops at 5000 and sets `count_capped: true`. A filter with no matches returns `matched: 0` instead of a preview.
+- **Returns:** `dict` (`executed`, `vouchers_deleted`)
+
 ---
 
-## MAC ACL (3 tools)
+## MAC ACL (5 tools)
 
 Module: `tools/network/mac_acl.py`
 
@@ -776,6 +845,20 @@ Add a new MAC ACL filter rule.
 Delete a MAC ACL filter rule.
 
 - **Parameters:** `rule_id: str`
+- **Returns:** `dict`
+
+### get_acl_rule_order
+
+Get the evaluation order of user-defined ACL rules.
+
+- **Parameters:** None
+- **Returns:** `dict` with `ordered_rule_ids` (first id is evaluated first)
+
+### reorder_acl_rules **(Tier 2)**
+
+Set the ACL rule evaluation order. The list must contain every current rule id exactly once.
+
+- **Parameters:** `ordered_rule_ids: list[str]`, `confirm: bool = False`
 - **Returns:** `dict`
 
 ---
@@ -927,6 +1010,96 @@ Combines load-balancing status (state per WAN network group) with the Integratio
 
 - **Parameters:** None
 - **Returns:** `dict`
+
+## Routing (4 tools)
+
+Module: `tools/network/routing.py` (group `insights`, all Tier 1). These read internal or legacy endpoints without a public contract and fail soft: on a 404, auth error or unexpected shape they return an error dict naming the endpoint.
+
+### get_routing_table
+
+- **Parameters:** None
+- **Returns:** `dict` with `routes`, `count`, `truncated`
+
+### list_static_routes
+
+- **Parameters:** None
+- **Returns:** `list[dict]` with id, name, enabled, network, next_hop, interface, distance, type, route_type (nexthop-route, interface-route or blackhole), or an error dict
+
+### list_traffic_routes
+
+- **Parameters:** None
+- **Returns:** `list[dict]` of policy-based routes, or an error dict
+
+### list_nat_rules
+
+- **Parameters:** None
+- **Returns:** `list[dict]` of NAT rules, or an error dict
+
+---
+
+## Site Insights (7 tools)
+
+Module: `tools/network/site_insights.py` (group `insights`, all Tier 1, fail soft). Secret-looking fields are masked as `***` in every response.
+
+### list_content_filters
+
+- **Parameters:** None
+- **Returns:** `list[dict]` of content filtering profiles, or an error dict
+
+### list_neighbor_aps
+
+- **Parameters:** `limit: int = 50` (1 to 1000), `band: str | None` (2.4, 5, 6), `min_rssi: int | None` (dBm), `include_own: bool = False`
+- **Returns:** `dict` with `neighbors`, `returned`, `matched`, `total_seen`. Sorted by signal (dBm). SSIDs are sanitized (control characters removed, 64 characters max) and are untrusted text.
+
+### get_site_traffic_history
+
+- **Parameters:** `interval: str = "hourly"` (`5minutes`, `hourly`, `daily`), `hours: int = 24` (1 to 8760)
+- **Returns:** `dict` with `interval`, `hours`, `count`, `rows` (time, wan_tx_bytes, wan_rx_bytes, num_sta). Issues a read-only report query by POST.
+
+### list_vpn_connections
+
+- **Parameters:** None
+- **Returns:** `dict` with `connections`, `wireguard_users`, `errors` (an endpoint that failed is listed in `errors` while the other still returns)
+
+### list_scheduled_tasks
+
+- **Parameters:** None
+- **Returns:** `list[dict]` with id, name, action, cron_expr, timezone, execute_only_once, or an error dict
+
+### list_dynamic_dns
+
+- **Parameters:** None
+- **Returns:** `list[dict]` of DDNS entries with passwords masked, or an error dict
+
+### get_site_settings
+
+- **Parameters:** `section: str | None = None`
+- **Returns:** without `section`, `{sections, count}`; with it, `{section, settings}`. Fields whose names contain pass, secret, key, token, psk, community, signature, private, certificate or configuration, or start with `x_`, are masked. The section identity field `key` is not masked.
+
+---
+
+## Lookups (14 tools)
+
+Module: `tools/network/lookups.py` (group `core`, all Tier 1, official Integration API).
+
+| Tool | Parameters | Returns |
+|---|---|---|
+| `list_wans` | none | `list[dict]` id, name |
+| `list_site_to_site_tunnels` | none | `list[dict]` id, name, type, origin |
+| `list_device_tags` | none | `list[dict]` tags with device ids |
+| `search_dpi_applications` | `query: str`, `limit: int = 25` (1 to 200) | `list[dict]` id, name; case-insensitive substring match, prefix matches first |
+| `list_dpi_categories` | none | `list[dict]` id, name |
+| `list_countries` | `query: str | None` | `list[dict]` code, name; substring match on code or name |
+| `list_switch_stacks` | none | `list[dict]` id, name, units, lag ids |
+| `get_switch_stack` | `stack_id: str` | `dict` |
+| `list_lags` | none | `list[dict]` type LOCAL, SWITCH_STACK or MULTI_CHASSIS, member ports |
+| `get_lag` | `lag_id: str` | `dict` |
+| `list_mc_lag_domains` | none | `list[dict]` peers (TOP, BOTTOM) and LAGs |
+| `get_mc_lag_domain` | `domain_id: str` | `dict` |
+| `list_radius_profiles_v1` | none | `list[dict]` id, name, origin (no secrets) |
+| `list_vpn_servers_v1` | none | `list[dict]` id, name, type, enabled, origin |
+
+`search_dpi_applications` and `list_countries` return a single error dict (not a list) when `query` or `limit` is invalid. The official filter `name.like()` is case-sensitive and prefix-only, so these tools page through the catalog (cached for an hour) and match client-side.
 
 ---
 
@@ -1473,3 +1646,21 @@ Live-window smart detections (person, vehicle, animal, package, face, licensePla
 - **Returns:** `dict` with `tool`, `window_seconds`, `messages_seen`, `count`, `messages` (message_type `add` | `update` | `remove`, model_key, device_ids, name, state, changed_fields), `note`
 
 ---
+
+---
+
+## Site Manager (cloud) (9 tools)
+
+Module: `tools/cloud/` (all Tier 1, read-only). Loaded by `load_cloud_tools` when `UNIFI_CLOUD_API_KEY` is set. They call the Site Manager API v1 on `api.ui.com`, were built from the vendored spec, and are verified with mocked tests only. Ids must start with a letter or digit and contain only letters, digits, `_`, `-`, `.` and `:`. List tools follow `nextToken` pagination (at most 20 pages; a warning is logged if the result is truncated). Errors: 400 `VALIDATION_ERROR`, 401 and 403 `AUTH_ERROR`, 404 `NOT_FOUND`, 429 `CONNECTION_ERROR` with `rate_limited: true` and `retry_after_seconds`, 502 to 504 `PRODUCT_UNAVAILABLE`.
+
+| Tool | Parameters | Returns |
+|---|---|---|
+| `list_cloud_hosts` | none | `list[dict]` consoles and servers on the account |
+| `get_cloud_host` | `host_id: str` | `dict`; `NOT_FOUND` when the id does not match a host |
+| `list_cloud_sites` | none | `list[dict]` hostId, siteId, metadata, statistics, permission |
+| `list_cloud_devices` | `host_ids: list[str] | None` | `list[dict]` devices grouped by host |
+| `get_isp_metrics` | `metric_type: str = "5m"` (`5m` or `1h`), `duration: str | None` (`24h` for 5m; `7d` or `30d` for 1h), `begin`, `end` (RFC3339 with offset) | `list[dict]` periods per site. `duration` excludes `begin` and `end`. Large windows return many rows |
+| `query_isp_metrics` | `metric_type: str`, `sites: list[dict]` of `{hostId, siteId, beginTimestamp?, endTimestamp?}` | `dict` with data and a top-level `status` (`partialSuccess` when some sites were not accessible). Read-only POST |
+| `list_sdwan_configs` | none | `list[dict]` id, name, type |
+| `get_sdwan_config` | `config_id: str` | `dict` hubs, spokes, connections |
+| `get_sdwan_status` | `config_id: str` | `dict` live hub and spoke status |

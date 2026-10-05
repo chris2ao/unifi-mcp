@@ -1,0 +1,16 @@
+{
+  "offset": 0,
+  "limit": 25,
+  "count": 1,
+  "totalCount": 1,
+  "data": [
+    {
+      "type": "IPSEC",
+      "id": "00000000-0000-0000-0000-000000000021",
+      "name": "Branch Office",
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    }
+  ]
+}

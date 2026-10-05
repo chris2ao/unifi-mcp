@@ -1,0 +1,87 @@
+{
+  "meta": {
+    "rc": "ok"
+  },
+  "data": [
+    {
+      "_id": "00000000-0000-0000-0000-000000000001",
+      "essid": "Neighbor A",
+      "bssid": "aa:bb:cc:01:00:01",
+      "band": "ng",
+      "radio": "ng",
+      "channel": 6,
+      "bw": 20,
+      "rssi": -80,
+      "signal": -80,
+      "security": "WPA2-Personal (AES/CCMP)",
+      "is_ubnt": false,
+      "ap_mac": "aa:bb:cc:00:00:10",
+      "ap_name": "Office AP",
+      "last_seen": 1700000001
+    },
+    {
+      "_id": "00000000-0000-0000-0000-000000000002",
+      "essid": "Neighbor B",
+      "bssid": "aa:bb:cc:01:00:02",
+      "band": "na",
+      "radio": "na",
+      "channel": 36,
+      "bw": 20,
+      "rssi": -60,
+      "signal": -60,
+      "security": "WPA2-Personal (AES/CCMP)",
+      "is_ubnt": false,
+      "ap_mac": "aa:bb:cc:00:00:10",
+      "ap_name": "Office AP",
+      "last_seen": 1700000002
+    },
+    {
+      "_id": "00000000-0000-0000-0000-000000000003",
+      "essid": "Neighbor C",
+      "bssid": "aa:bb:cc:01:00:03",
+      "band": "ng",
+      "radio": "ng",
+      "channel": 11,
+      "bw": 20,
+      "rssi": -55,
+      "signal": -55,
+      "security": "WPA2-Personal (AES/CCMP)",
+      "is_ubnt": false,
+      "ap_mac": "aa:bb:cc:00:00:10",
+      "ap_name": "Office AP",
+      "last_seen": 1700000003
+    },
+    {
+      "_id": "00000000-0000-0000-0000-000000000004",
+      "essid": "Own Mesh",
+      "bssid": "aa:bb:cc:01:00:04",
+      "band": "na",
+      "radio": "na",
+      "channel": 44,
+      "bw": 20,
+      "rssi": -40,
+      "signal": -40,
+      "security": "WPA2-Personal (AES/CCMP)",
+      "is_ubnt": true,
+      "ap_mac": "aa:bb:cc:00:00:10",
+      "ap_name": "Office AP",
+      "last_seen": 1700000004
+    },
+    {
+      "_id": "00000000-0000-0000-0000-000000000005",
+      "essid": "Open Cafe",
+      "bssid": "aa:bb:cc:01:00:05",
+      "band": "ng",
+      "radio": "ng",
+      "channel": 1,
+      "bw": 20,
+      "rssi": -90,
+      "signal": -90,
+      "security": "Open",
+      "is_ubnt": false,
+      "ap_mac": "aa:bb:cc:00:00:10",
+      "ap_name": "Office AP",
+      "last_seen": 1700000005
+    }
+  ]
+}

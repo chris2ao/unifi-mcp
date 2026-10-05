@@ -1,0 +1,22 @@
+{
+  "meta": {
+    "rc": "ok"
+  },
+  "data": [
+    {
+      "time": 1700000000000,
+      "wan-tx_bytes": 1000,
+      "wan-rx_bytes": 5000,
+      "num_sta": 7,
+      "site": "default",
+      "o": "site",
+      "oid": "default"
+    },
+    {
+      "time": 1700003600000,
+      "wan-tx_bytes": 2000,
+      "wan-rx_bytes": 9000,
+      "num_sta": 9
+    }
+  ]
+}
