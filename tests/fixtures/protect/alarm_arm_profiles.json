@@ -1,0 +1,24 @@
+[
+  {
+    "id": "00000000-0000-0000-0000-0000000000a1",
+    "name": "Away",
+    "automations": ["00000000-0000-0000-0000-0000000000b1"],
+    "creator": "00000000-0000-0000-0000-0000000000c1",
+    "schedules": [{"start": "0 22 * * *", "end": "0 6 * * *"}],
+    "recordEverything": true,
+    "activationDelay": 60000,
+    "createdAt": 1700000000000,
+    "updatedAt": 1700000100000
+  },
+  {
+    "id": "00000000-0000-0000-0000-0000000000a2",
+    "name": "Night",
+    "automations": [],
+    "creator": null,
+    "schedules": [],
+    "recordEverything": false,
+    "activationDelay": 0,
+    "createdAt": 1700000200000,
+    "updatedAt": 1700000200000
+  }
+]

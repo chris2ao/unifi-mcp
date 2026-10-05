@@ -1,0 +1,27 @@
+[
+  {
+    "id": "000000000000000000000001",
+    "modelKey": "light",
+    "state": "CONNECTED",
+    "name": "Porch Light",
+    "type": "UP-light",
+    "guid": "00000000-0000-0000-0000-000000000001",
+    "mac": "aa:bb:cc:00:00:01",
+    "lightModeSettings": {
+      "mode": "motion",
+      "enableAt": "fulltime"
+    },
+    "lightDeviceSettings": {
+      "isIndicatorEnabled": true,
+      "pirDuration": 30000,
+      "pirSensitivity": 50,
+      "ledLevel": 6
+    },
+    "isDark": false,
+    "isLightOn": false,
+    "isLightForceEnabled": false,
+    "lastMotion": 1741267544209,
+    "isPirMotionDetected": false,
+    "camera": null
+  }
+]

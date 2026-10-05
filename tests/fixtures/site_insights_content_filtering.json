@@ -1,0 +1,27 @@
+[
+  {
+    "_id": "00000000-0000-0000-0000-0000000000a4",
+    "name": "Kids",
+    "enabled": true,
+    "categories": [
+      "ADULT",
+      "GAMBLING"
+    ],
+    "allow_list": [],
+    "block_list": [
+      "bad.example.com"
+    ],
+    "safe_search": [
+      "GOOGLE"
+    ],
+    "client_macs": [
+      "aa:bb:cc:00:00:02"
+    ],
+    "network_ids": [
+      "00000000-0000-0000-0000-0000000000b1"
+    ],
+    "schedule": {
+      "mode": "ALWAYS"
+    }
+  }
+]

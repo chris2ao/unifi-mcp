@@ -1,0 +1,53 @@
+{
+  "meta": {
+    "rc": "ok"
+  },
+  "data": [
+    {
+      "_id": "00000000-0000-0000-0000-0000000000c1",
+      "key": "ntp",
+      "ntp_server_1": "ntp.example.com",
+      "setting_preference": "auto"
+    },
+    {
+      "_id": "00000000-0000-0000-0000-0000000000c2",
+      "key": "mgmt",
+      "x_ssh_password": "pw",
+      "x_ssh_md5passwd": "hash",
+      "ssh_enabled": true,
+      "wifi_psk": "psk1",
+      "api_token": "tokval9",
+      "secret_note": "sn",
+      "admin_key": "ak",
+      "x_ssh_keys": [
+        {
+          "name": "laptop",
+          "key": "ssh-rsa AAA"
+        }
+      ],
+      "nested": {
+        "radius_secret": "rs",
+        "visible": "ok"
+      }
+    },
+    {
+      "_id": "00000000-0000-0000-0000-0000000000c3",
+      "key": "radius",
+      "x_secret": "",
+      "enabled": false
+    },
+    {
+      "_id": "00000000-0000-0000-0000-0000000000c4",
+      "key": "snmp",
+      "community": "public-secret-community",
+      "enabled": true,
+      "port": 161
+    },
+    {
+      "_id": "00000000-0000-0000-0000-0000000000c5",
+      "key": "guest_access",
+      "paypal_signature": "sigval-xyz",
+      "portal_enabled": true
+    }
+  ]
+}

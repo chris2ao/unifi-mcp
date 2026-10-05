@@ -50,10 +50,10 @@ _REBOOT_UNAVAILABLE = {
     "error": True,
     "category": "PRODUCT_UNAVAILABLE",
     "message": (
-        "Camera reboot is not exposed on this firmware via the API-key "
-        "Integration API. /cameras/{id}/reboot and /restart both return 404, "
-        "and /nvrs/reboot does not exist. Reboot cameras through the Protect "
-        "web/mobile UI."
+        "Camera reboot is not available through the Protect Integration API "
+        "(verified on Protect 7.2.105, spec v7.3.70): there is no reboot "
+        "endpoint for cameras or NVRs. Reboot cameras from the Protect web or "
+        "mobile UI."
     ),
 }
 
@@ -62,7 +62,10 @@ async def reboot_camera(
     client: UnifiClient, camera_id: str, confirm: bool = False,
 ) -> dict:
     """Reboot a Protect camera. Currently unavailable via API key."""
-    return _REBOOT_UNAVAILABLE
+    return dict(_REBOOT_UNAVAILABLE)
+
+
+reboot_camera.never_previews = True  # stub: no preview is ever produced, see server._run_guarded
 
 
 TOOLS = [list_nvrs, get_nvr_stats, reboot_camera]

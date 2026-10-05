@@ -1,0 +1,11 @@
+[
+  {
+    "_id": "00000000-0000-0000-0000-0000000000a3",
+    "description": "Masquerade Lab",
+    "enabled": true,
+    "type": "MASQUERADE",
+    "protocol": "all",
+    "out_interface": "eth8",
+    "ip_version": "IPV4"
+  }
+]

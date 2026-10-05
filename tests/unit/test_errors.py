@@ -35,3 +35,7 @@ def test_status_code_to_category():
     assert status_to_category(400) == ErrorCategory.VALIDATION_ERROR
     assert status_to_category(409) == ErrorCategory.CONFLICT
     assert status_to_category(500) is None
+
+
+def test_preview_required_category_exists():
+    assert ErrorCategory.PREVIEW_REQUIRED == "PREVIEW_REQUIRED"

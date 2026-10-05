@@ -1,0 +1,26 @@
+{
+  "offset": 0,
+  "limit": 25,
+  "count": 2,
+  "totalCount": 2,
+  "data": [
+    {
+      "id": "00000000-0000-0000-0000-000000000081",
+      "name": "Remote Access",
+      "type": "OPENVPN",
+      "enabled": true,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000082",
+      "name": "Teleport",
+      "type": "UID",
+      "enabled": false,
+      "metadata": {
+        "origin": "SYSTEM_DEFINED"
+      }
+    }
+  ]
+}

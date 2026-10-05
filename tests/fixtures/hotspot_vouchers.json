@@ -1,0 +1,30 @@
+{
+  "offset": 0,
+  "limit": 25,
+  "count": 2,
+  "totalCount": 2,
+  "data": [
+    {
+      "id": "00000000-0000-0000-0000-0000000000c1",
+      "createdAt": "2026-01-01T00:00:00Z",
+      "name": "hotel-guest",
+      "code": "4861409501",
+      "authorizedGuestLimit": 1,
+      "authorizedGuestCount": 0,
+      "expired": false,
+      "timeLimitMinutes": 1440
+    },
+    {
+      "id": "00000000-0000-0000-0000-0000000000c2",
+      "createdAt": "2026-01-01T00:00:00Z",
+      "name": "conference",
+      "code": "4861409502",
+      "authorizedGuestLimit": 1,
+      "authorizedGuestCount": 1,
+      "expired": false,
+      "timeLimitMinutes": 1440,
+      "activatedAt": "2026-01-02T00:00:00Z",
+      "expiresAt": "2026-01-03T00:00:00Z"
+    }
+  ]
+}

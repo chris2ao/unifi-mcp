@@ -1,0 +1,193 @@
+{
+  "offset": 0,
+  "limit": 200,
+  "count": 5,
+  "totalCount": 5,
+  "data": [
+    {
+      "id": "00000000-0000-0000-0000-000000000101",
+      "enabled": true,
+      "name": "Allow Office to Servers",
+      "description": "",
+      "index": 1,
+      "action": {
+        "type": "ALLOW",
+        "allowReturnTraffic": true
+      },
+      "source": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a1",
+        "trafficFilter": {
+          "type": "IP_ADDRESS",
+          "ipAddressFilter": {
+            "type": "IP_ADDRESSES",
+            "matchOpposite": false,
+            "items": [
+              {
+                "type": "SUBNET",
+                "value": "10.0.0.0/24"
+              }
+            ]
+          }
+        }
+      },
+      "destination": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a2"
+      },
+      "ipProtocolScope": {
+        "ipVersion": "IPV4_AND_IPV6"
+      },
+      "loggingEnabled": false,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000102",
+      "enabled": false,
+      "name": "Block Guest to Servers",
+      "description": "",
+      "index": 2,
+      "action": {
+        "type": "ALLOW",
+        "allowReturnTraffic": true
+      },
+      "source": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a1",
+        "trafficFilter": {
+          "type": "IP_ADDRESS",
+          "ipAddressFilter": {
+            "type": "IP_ADDRESSES",
+            "matchOpposite": false,
+            "items": [
+              {
+                "type": "SUBNET",
+                "value": "10.0.0.0/24"
+              }
+            ]
+          }
+        }
+      },
+      "destination": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a2"
+      },
+      "ipProtocolScope": {
+        "ipVersion": "IPV4_AND_IPV6"
+      },
+      "loggingEnabled": false,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000103",
+      "enabled": true,
+      "name": "Allow DNS",
+      "description": "",
+      "index": 3,
+      "action": {
+        "type": "ALLOW",
+        "allowReturnTraffic": true
+      },
+      "source": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a1",
+        "trafficFilter": {
+          "type": "IP_ADDRESS",
+          "ipAddressFilter": {
+            "type": "IP_ADDRESSES",
+            "matchOpposite": false,
+            "items": [
+              {
+                "type": "SUBNET",
+                "value": "10.0.0.0/24"
+              }
+            ]
+          }
+        }
+      },
+      "destination": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a2"
+      },
+      "ipProtocolScope": {
+        "ipVersion": "IPV4_AND_IPV6"
+      },
+      "loggingEnabled": true,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000104",
+      "enabled": true,
+      "name": "Other Pair",
+      "description": "",
+      "index": 1,
+      "action": {
+        "type": "ALLOW",
+        "allowReturnTraffic": true
+      },
+      "source": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a2",
+        "trafficFilter": {
+          "type": "IP_ADDRESS",
+          "ipAddressFilter": {
+            "type": "IP_ADDRESSES",
+            "matchOpposite": false,
+            "items": [
+              {
+                "type": "SUBNET",
+                "value": "10.0.0.0/24"
+              }
+            ]
+          }
+        }
+      },
+      "destination": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a1"
+      },
+      "ipProtocolScope": {
+        "ipVersion": "IPV4_AND_IPV6"
+      },
+      "loggingEnabled": false,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    },
+    {
+      "id": "00000000-0000-0000-0000-000000000105",
+      "enabled": true,
+      "name": "Default Allow",
+      "description": "",
+      "index": 0,
+      "action": {
+        "type": "ALLOW",
+        "allowReturnTraffic": true
+      },
+      "source": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a1",
+        "trafficFilter": {
+          "type": "IP_ADDRESS",
+          "ipAddressFilter": {
+            "type": "IP_ADDRESSES",
+            "matchOpposite": false,
+            "items": [
+              {
+                "type": "SUBNET",
+                "value": "10.0.0.0/24"
+              }
+            ]
+          }
+        }
+      },
+      "destination": {
+        "zoneId": "00000000-0000-0000-0000-0000000000a2"
+      },
+      "ipProtocolScope": {
+        "ipVersion": "IPV4_AND_IPV6"
+      },
+      "loggingEnabled": false,
+      "metadata": {
+        "origin": "SYSTEM_DEFINED"
+      }
+    }
+  ]
+}

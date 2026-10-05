@@ -1,0 +1,40 @@
+{
+  "id": "00000000-0000-0000-0000-000000000041",
+  "deviceId": "00000000-0000-0000-0000-0000000000d3",
+  "name": "Rack Stack",
+  "units": [
+    {
+      "id": 1,
+      "macAddress": "aa:bb:cc:00:00:e1",
+      "role": "ACTIVE_CONTROLLER",
+      "order": 0
+    },
+    {
+      "id": 2,
+      "macAddress": "aa:bb:cc:00:00:e2",
+      "role": "MEMBER",
+      "order": 1
+    }
+  ],
+  "lags": [
+    {
+      "id": "00000000-0000-0000-0000-000000000051",
+      "members": [
+        {
+          "unitMacAddress": "aa:bb:cc:00:00:e1",
+          "unitId": 1,
+          "portIdxs": [
+            1,
+            2
+          ]
+        }
+      ],
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    }
+  ],
+  "metadata": {
+    "origin": "USER_DEFINED"
+  }
+}

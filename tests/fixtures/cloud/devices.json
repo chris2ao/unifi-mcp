@@ -1,0 +1,1 @@
+{"data":[{"hostId":"00000000000000000000000000000001:111111111","hostName":"Office Console","updatedAt":"2026-06-15T07:21:27Z","devices":[{"id":"aabbcc000001","mac":"aa:bb:cc:00:00:01","name":"Office AP","model":"U7 Pro","ip":"10.0.0.2","status":"online"}]}],"httpStatusCode":200,"traceId":"t"}

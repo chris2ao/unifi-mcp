@@ -1,0 +1,17 @@
+{
+  "meta": {
+    "rc": "ok"
+  },
+  "data": [
+    {
+      "_id": "00000000-0000-0000-0000-0000000000a8",
+      "service": "dyndns",
+      "host_name": "home.example.com",
+      "interface": "wan",
+      "server": "",
+      "login": "user@example.com",
+      "x_password": "s3cret",
+      "password": "s3cret2"
+    }
+  ]
+}

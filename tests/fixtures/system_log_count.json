@@ -1,0 +1,56 @@
+{
+  "categories": [
+    {
+      "count": 20,
+      "name": "AUDIT"
+    },
+    {
+      "count": 4,
+      "name": "VPN"
+    },
+    {
+      "count": 748,
+      "name": "SECURITY"
+    },
+    {
+      "count": 3977,
+      "name": "CLIENT_DEVICES"
+    }
+  ],
+  "events": [
+    {
+      "count": 573,
+      "name": "CLIENT_ROAMED"
+    },
+    {
+      "count": 1684,
+      "name": "CLIENT_CONNECTED_WIRELESS"
+    },
+    {
+      "count": 748,
+      "name": "THREAT_BLOCKED"
+    },
+    {
+      "count": 20,
+      "name": "ADMIN_ACCESS"
+    },
+    {
+      "count": 1720,
+      "name": "CLIENT_DISCONNECTED_WIRELESS"
+    },
+    {
+      "count": 4,
+      "name": "TELEPORT_CLIENT_CONNECTED"
+    }
+  ],
+  "type": [
+    {
+      "count": 20,
+      "name": "AUDIT"
+    },
+    {
+      "count": 4729,
+      "name": "GENERAL"
+    }
+  ]
+}

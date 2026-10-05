@@ -30,16 +30,18 @@ jobs:
       - name: Run unit tests
         run: uv run pytest -q
 
-      - name: Verify Protect tool registration
+      - name: Verify every auto-discovered tool module imports
         run: |
           uv run python -c "
-          from unifi_mcp.tools._registry import PRODUCT_MODULES
           import importlib
+          from unifi_mcp.tools._registry import PRODUCT_MODULES
+          count = 0
           for product, modules in PRODUCT_MODULES.items():
               for m in modules:
-                  try:
-                      importlib.import_module(f'unifi_mcp.tools.{product}.{m}')
-                  except ImportError:
-                      pass
-          print('All tool modules import cleanly.')
+                  importlib.import_module(f'unifi_mcp.tools.{product}.{m}')
+                  count += 1
+          print(f'All {count} tool modules import cleanly.')
           "
+
+      - name: Check docs/TOOLS.md is up to date
+        run: uv run python scripts/gen_tool_docs.py --check

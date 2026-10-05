@@ -1,0 +1,26 @@
+{
+  "meta": {
+    "rc": "ok"
+  },
+  "data": [
+    {
+      "_id": "00000000-0000-0000-0000-0000000000a1",
+      "name": "Lab route",
+      "enabled": true,
+      "type": "static-route",
+      "static-route_network": "192.0.2.0/24",
+      "static-route_nexthop": "10.0.0.2",
+      "static-route_distance": 1,
+      "static-route_interface": "LAN"
+    },
+    {
+      "_id": "00000000-0000-0000-0000-0000000000a2",
+      "name": "Blackhole",
+      "enabled": true,
+      "type": "static-route",
+      "static-route_type": "blackhole",
+      "static-route_network": "198.51.100.0/24",
+      "static-route_distance": 1
+    }
+  ]
+}

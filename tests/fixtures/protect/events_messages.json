@@ -1,0 +1,90 @@
+[
+  {
+    "type": "add",
+    "item": {
+      "id": "000000000000000000000e01",
+      "modelKey": "event",
+      "type": "motion",
+      "start": 1741267544209,
+      "end": null,
+      "device": "000000000000000000000c01"
+    }
+  },
+  {
+    "type": "update",
+    "item": {
+      "id": "000000000000000000000e01",
+      "modelKey": "event",
+      "type": "motion",
+      "start": 1741267544209,
+      "end": 1741267554209,
+      "device": "000000000000000000000c01"
+    }
+  },
+  {
+    "type": "add",
+    "item": {
+      "id": "000000000000000000000e02",
+      "modelKey": "event",
+      "type": "smartDetectZone",
+      "start": 1741267544209,
+      "end": null,
+      "device": "000000000000000000000c01",
+      "smartDetectTypes": [
+        "person"
+      ],
+      "score": 87
+    }
+  },
+  {
+    "type": "add",
+    "item": {
+      "id": "000000000000000000000e03",
+      "modelKey": "event",
+      "type": "smartDetectLine",
+      "start": 1741267544209,
+      "end": null,
+      "device": "000000000000000000000c01",
+      "smartDetectTypes": [
+        "vehicle",
+        "licensePlate"
+      ]
+    }
+  },
+  {
+    "type": "add",
+    "item": {
+      "id": "000000000000000000000e04",
+      "modelKey": "event",
+      "type": "motion",
+      "start": 1741267544209,
+      "end": null,
+      "device": "000000000000000000000c02"
+    }
+  },
+  {
+    "type": "add",
+    "item": {
+      "id": "000000000000000000000e05",
+      "modelKey": "event",
+      "type": "ring",
+      "start": 1741267544209,
+      "end": null,
+      "device": "000000000000000000000c01"
+    }
+  },
+  {
+    "type": "update",
+    "item": {
+      "id": "000000000000000000000e07",
+      "modelKey": "event",
+      "type": "smartAudioDetect",
+      "start": 1741267544209,
+      "end": 1741267554209,
+      "device": "000000000000000000000c01",
+      "smartDetectTypes": [
+        "alrmSpeak"
+      ]
+    }
+  }
+]

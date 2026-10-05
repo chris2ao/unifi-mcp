@@ -9,7 +9,7 @@
     {
       "name": "unifi-mcp",
       "source": "./",
-      "description": "Manage UniFi Network and Protect from Claude Code. 103 tools covering devices, clients, VLANs, firewall, ZBF, WiFi, VPN, topology, cameras, and more.",
+      "description": "Manage UniFi Network and Protect from Claude Code. 214 tools (including 9 optional read-only Site Manager cloud tools) covering devices, clients, VLANs, firewall, ZBF, DNS policies, routing, traffic flows, insights, WiFi, VPN, topology, cameras, PTZ, alarm manager, and more.",
       "category": "infrastructure",
       "tags": ["unifi", "networking", "home-lab", "protect", "cameras"],
       "strict": true

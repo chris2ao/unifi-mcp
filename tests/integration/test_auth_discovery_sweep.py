@@ -134,11 +134,10 @@ def _build_tools() -> list[tuple[str, object]]:
         pass
 
     # Note: get_camera, get_camera_snapshot, update_camera_name, set_camera_recording_mode,
-    # ptz_camera, reboot_camera, list_motion_events, list_smart_detections are excluded because:
+    # reboot_camera and the live-window event tools are excluded because:
     # - get_camera, get_camera_snapshot, update_camera_name, set_camera_recording_mode, etc.
     #   require specific parameters (camera_id, name, etc.) that the sweep harness cannot provide.
-    # - PRODUCT_UNAVAILABLE stubs (list_motion_events, list_smart_detections) don't make HTTP
-    #   calls and are not useful for auth discovery.
+    # - The event tools listen on a live WebSocket window rather than a REST endpoint.
 
     return tools
 

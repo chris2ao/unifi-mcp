@@ -9,6 +9,7 @@ from unifi_mcp.config import UnifiConfig
 from unifi_mcp.cache import TTLCache
 from unifi_mcp.auth.discovery import DiscoveryRegistry
 
+SITE_UUID = "00000000-0000-0000-0000-000000000001"
 FIXTURES = Path(__file__).parent.parent / "fixtures"
 
 
@@ -21,7 +22,9 @@ def config(monkeypatch):
 
 @pytest.fixture
 def mock_client(config):
-    return UnifiClient(config, TTLCache(), DiscoveryRegistry())
+    client = UnifiClient(config, TTLCache(), DiscoveryRegistry())
+    client._site_id = SITE_UUID
+    return client
 
 
 def load_fixture(name: str) -> dict:
@@ -117,6 +120,9 @@ async def test_delete_network_preview(mock_client):
     result = await delete_network(mock_client, network_id="net002", confirm=False)
     assert result["preview"] is True
     assert result["action"] == "delete_network"
+    # Lookup is best effort: unmocked routes must not break the preview.
+    assert "references" not in result
+    assert "references_note" in result
 
 
 @respx.mock
@@ -136,4 +142,197 @@ async def test_get_dhcp_leases(mock_client):
 
 def test_networks_tools_list():
     from unifi_mcp.tools.network.networks import TOOLS
-    assert len(TOOLS) == 6
+    assert len(TOOLS) == 7
+
+
+NET_BASE = f"https://192.168.1.1/proxy/network/integration/v1/sites/{SITE_UUID}/networks"
+UUID_NET = "00000000-0000-0000-0000-0000000000c1"
+LEGACY_URL = "https://192.168.1.1/proxy/network/api/s/default/rest/networkconf/net001"
+
+
+def _mock_mapping():
+    respx.get(LEGACY_URL).mock(return_value=httpx.Response(
+        200, json={"meta": {"rc": "ok"}, "data": [{"_id": "net001", "name": "Default"}]}))
+    respx.get(NET_BASE).mock(return_value=httpx.Response(
+        200, json=load_fixture("network_references_integration_networks.json")))
+
+
+def test_networks_tier2_declaration():
+    from unifi_mcp.tools.network.networks import TIER2_TOOLS
+    assert TIER2_TOOLS == {
+        "create_network": "networks", "update_network": "networks", "delete_network": "networks",
+    }
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_network_references_integration_id(mock_client):
+    from unifi_mcp.tools.network.networks import get_network_references
+
+    respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(
+        return_value=httpx.Response(200, json=load_fixture("network_references.json")))
+    r = await get_network_references(mock_client, UUID_NET)
+    assert r["referenced"] is True
+    assert r["total_references"] == 3
+    assert r["groups"][0] == {
+        "resource_type": "DEVICE", "count": 2,
+        "ids": ["00000000-0000-0000-0000-0000000000a1", "00000000-0000-0000-0000-0000000000a2"],
+    }
+    assert r["groups"][1]["resource_type"] == "WIFI"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_network_references_legacy_id_mapped_by_name(mock_client):
+    from unifi_mcp.tools.network.networks import get_network_references
+
+    _mock_mapping()
+    route = respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(
+        return_value=httpx.Response(200, json=load_fixture("network_references.json")))
+    r = await get_network_references(mock_client, "net001")
+    assert route.called
+    assert r["network_id"] == "net001"
+    assert r["total_references"] == 3
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_network_references_empty(mock_client):
+    from unifi_mcp.tools.network.networks import get_network_references
+
+    respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(
+        return_value=httpx.Response(200, json=load_fixture("network_references_empty.json")))
+    r = await get_network_references(mock_client, UUID_NET)
+    assert r["referenced"] is False and r["groups"] == []
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_network_references_wrapped_and_truncated(mock_client):
+    from unifi_mcp.tools.network.networks import get_network_references
+
+    refs = [{"referenceId": f"id{i}"} for i in range(30)]
+    body = {"data": {"referenceResources": [
+        {"resourceType": "CLIENT", "referenceCount": 30, "references": refs},
+        {"resourceType": "NAT_RULE", "references": [{"referenceId": "n1"}]},
+        "junk",
+    ]}}
+    respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(return_value=httpx.Response(200, json=body))
+    r = await get_network_references(mock_client, UUID_NET)
+    assert r["groups"][0]["count"] == 30 and len(r["groups"][0]["ids"]) == 20
+    assert r["groups"][1]["count"] == 1
+    assert r["total_references"] == 31
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_network_references_unexpected_shape(mock_client):
+    from unifi_mcp.tools.network.networks import get_network_references
+
+    respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(return_value=httpx.Response(200, json=[]))
+    r = await get_network_references(mock_client, UUID_NET)
+    assert r["referenced"] is False
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_network_references_404(mock_client):
+    from unifi_mcp.tools.network.networks import get_network_references
+
+    respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(return_value=httpx.Response(404))
+    r = await get_network_references(mock_client, UUID_NET)
+    assert r["category"] == "NOT_FOUND"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_network_references_legacy_unknown(mock_client):
+    from unifi_mcp.tools.network.networks import get_network_references
+
+    respx.get(LEGACY_URL).mock(return_value=httpx.Response(200, json={"data": []}))
+    r = await get_network_references(mock_client, "net001")
+    assert r["category"] == "NOT_FOUND"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_network_references_legacy_name_not_in_integration(mock_client):
+    from unifi_mcp.tools.network.networks import get_network_references
+
+    respx.get(LEGACY_URL).mock(return_value=httpx.Response(
+        200, json={"data": [{"_id": "net001", "name": "Ghost"}]}))
+    respx.get(NET_BASE).mock(return_value=httpx.Response(
+        200, json=load_fixture("network_references_integration_networks.json")))
+    r = await get_network_references(mock_client, "net001")
+    assert r["category"] == "NOT_FOUND"
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("bad", ["", "a/b", "../x", "x?y", "a b"])
+async def test_get_network_references_validation(mock_client, bad):
+    from unifi_mcp.tools.network.networks import get_network_references
+
+    r = await get_network_references(mock_client, bad)
+    assert r["category"] == "VALIDATION_ERROR"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_delete_network_preview_lists_references(mock_client):
+    from unifi_mcp.tools.network.networks import delete_network
+
+    _mock_mapping()
+    delete = respx.delete("https://192.168.1.1/proxy/network/api/s/default/rest/networkconf/net001")
+    respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(
+        return_value=httpx.Response(200, json=load_fixture("network_references.json")))
+    r = await delete_network(mock_client, network_id="net001")
+    assert r["preview"] is True
+    assert r["references"][0]["resource_type"] == "DEVICE"
+    assert "still referenced by 3" in r["warning"]
+    assert not delete.called
+    assert await delete_network(mock_client, network_id="net001") == r
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_delete_network_preview_unreferenced_has_no_warning(mock_client):
+    from unifi_mcp.tools.network.networks import delete_network
+
+    respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(
+        return_value=httpx.Response(200, json=load_fixture("network_references_empty.json")))
+    r = await delete_network(mock_client, network_id=UUID_NET)
+    assert r["references"] == []
+    assert "warning" not in r
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_delete_network_preview_lookup_not_found_noted(mock_client):
+    from unifi_mcp.tools.network.networks import delete_network
+
+    respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(return_value=httpx.Response(404))
+    r = await delete_network(mock_client, network_id=UUID_NET)
+    assert r["preview"] is True
+    assert "unavailable" in r["references_note"]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_delete_network_preview_lookup_crash_noted(mock_client):
+    from unifi_mcp.tools.network.networks import delete_network
+
+    respx.get(f"{NET_BASE}/{UUID_NET}/references").mock(side_effect=httpx.ConnectError("boom"))
+    r = await delete_network(mock_client, network_id=UUID_NET)
+    assert r["preview"] is True
+    assert "lookup failed" in r["references_note"]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_delete_network_confirmed_skips_lookup(mock_client):
+    from unifi_mcp.tools.network.networks import delete_network
+
+    respx.delete("https://192.168.1.1/proxy/network/api/s/default/rest/networkconf/net001").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": []}))
+    r = await delete_network(mock_client, network_id="net001", confirm=True)
+    assert r["executed"] is True

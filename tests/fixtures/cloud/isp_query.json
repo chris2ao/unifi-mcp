@@ -1,0 +1,1 @@
+{"data":{"metrics":[{"metricType":"1h","hostId":"00000000000000000000000000000001:111111111","siteId":"aaaaaaaaaaaaaaaaaaaaaaa1","periods":[{"metricTime":"2026-06-15T07:00:00Z","data":{"wan":{"avgLatency":11,"packetLoss":1,"uptime":3600,"downtime":0}}}]}]},"status":"partialSuccess","httpStatusCode":200,"traceId":"t"}

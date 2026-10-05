@@ -1,0 +1,24 @@
+{
+  "offset": 0,
+  "limit": 25,
+  "count": 4,
+  "totalCount": 4,
+  "data": [
+    {
+      "id": 786435,
+      "name": "Adobe Express"
+    },
+    {
+      "id": 1114174,
+      "name": "Zoom"
+    },
+    {
+      "id": 852150,
+      "name": "ZoomSpider crawler"
+    },
+    {
+      "id": 3,
+      "name": "ICQ"
+    }
+  ]
+}

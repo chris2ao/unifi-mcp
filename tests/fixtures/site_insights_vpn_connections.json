@@ -1,0 +1,13 @@
+{
+  "connections": [
+    {
+      "id": "00000000-0000-0000-0000-0000000000a5",
+      "name": "Branch tunnel",
+      "type": "site-to-site",
+      "status": "UP",
+      "x_shared_secret": "hunter2",
+      "pre_shared_key": "hunter3",
+      "remote_host": "203.0.113.9"
+    }
+  ]
+}

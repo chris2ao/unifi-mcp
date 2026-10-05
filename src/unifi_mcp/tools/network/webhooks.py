@@ -1,67 +1,51 @@
-"""Webhook / notification recipient tools.
+"""Webhook / notification recipient tools (currently unavailable).
 
-Network 9.x replaced the dedicated `/v2/api/site/{site}/webhooks` surface with
-the unified `/v2/api/site/{site}/notifications` collection. The new surface
-covers webhook URLs alongside email/Discord/Slack recipients, so the legacy
-"webhook" terminology is preserved here for backwards compatibility while the
-underlying calls target the notifications endpoint.
+Network 9.x moved webhook recipients from `/v2/api/site/{site}/webhooks` to
+`/v2/api/site/{site}/notifications`. On Network 10.6.106 that path also returns
+404, and no replacement was found among ten candidate paths. The tools are kept
+so existing callers get a clear PRODUCT_UNAVAILABLE explanation instead of a
+missing-tool error. Configure webhook recipients in the Network web UI.
 """
 
 from unifi_mcp.auth.client import UnifiClient
 
+TIER2_TOOLS: dict[str, str] = {
+    "create_webhook": "webhooks",
+    "delete_webhook": "webhooks",
+}
 
-def _format_notification(n: dict) -> dict:
-    return {
-        "id": n.get("id") or n.get("_id", ""),
-        "name": n.get("name", ""),
-        "url": n.get("url") or n.get("webhook_url", ""),
-        "type": n.get("type", "webhook"),
-        "enabled": n.get("enabled", True),
-    }
+_WEBHOOKS_UNAVAILABLE = {
+    "error": True,
+    "category": "PRODUCT_UNAVAILABLE",
+    "message": (
+        "Webhook recipient management is not available through the Network API "
+        "(verified on Network 10.6.106): /v2/api/site/{site}/webhooks and "
+        "/v2/api/site/{site}/notifications both return 404. Manage webhook "
+        "recipients in the UniFi Network web UI."
+    ),
+}
 
 
-async def list_webhooks(client: UnifiClient) -> list[dict]:
-    """List all configured webhook / notification recipients."""
-    response = await client.get(
-        "/proxy/network/v2/api/site/{site}/notifications",
-        cache_category="webhooks", cache_ttl=30.0,
-    )
-    if isinstance(response, list):
-        items = response
-    else:
-        items = response.get("data", [])
-    return [_format_notification(n) for n in items]
+async def list_webhooks(client: UnifiClient) -> dict:
+    """List webhook recipients. Currently unavailable via the API."""
+    return dict(_WEBHOOKS_UNAVAILABLE)
 
 
 async def create_webhook(
-    client: UnifiClient,
-    name: str,
-    url: str,
-    enabled: bool = True,
+    client: UnifiClient, name: str, url: str, confirm: bool = False,
 ) -> dict:
-    """Create a new webhook notification recipient. Tier 1."""
-    payload = {
-        "name": name,
-        "type": "webhook",
-        "url": url,
-        "enabled": enabled,
-    }
-
-    response = await client.post(
-        "/proxy/network/v2/api/site/{site}/notifications",
-        json=payload,
-    )
-    client.invalidate_cache("webhooks")
-    return {"action": "create_webhook", "name": name, "response": response}
+    """Create a webhook recipient. Currently unavailable via the API."""
+    return dict(_WEBHOOKS_UNAVAILABLE)
 
 
-async def delete_webhook(client: UnifiClient, webhook_id: str) -> dict:
-    """Delete a webhook / notification recipient. Tier 1."""
-    response = await client.delete(
-        f"/proxy/network/v2/api/site/{{site}}/notifications/{webhook_id}",
-    )
-    client.invalidate_cache("webhooks")
-    return {"action": "delete_webhook", "webhook_id": webhook_id, "response": response}
+async def delete_webhook(
+    client: UnifiClient, webhook_id: str, confirm: bool = False,
+) -> dict:
+    """Delete a webhook recipient. Currently unavailable via the API."""
+    return dict(_WEBHOOKS_UNAVAILABLE)
 
+
+create_webhook.never_previews = True  # stub: no preview is ever produced, see server._run_guarded
+delete_webhook.never_previews = True  # stub: no preview is ever produced, see server._run_guarded
 
 TOOLS = [list_webhooks, create_webhook, delete_webhook]

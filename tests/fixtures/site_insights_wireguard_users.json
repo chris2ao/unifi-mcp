@@ -1,0 +1,14 @@
+[
+  {
+    "_id": "00000000-0000-0000-0000-0000000000a6",
+    "name": "Phone",
+    "enabled": true,
+    "interface_ip": "10.0.0.50",
+    "allowed_ips": [
+      "10.0.0.50/32"
+    ],
+    "private_key": "PRIVKEY",
+    "public_key": "PUBKEY",
+    "x_preshared_key": "PSK"
+  }
+]

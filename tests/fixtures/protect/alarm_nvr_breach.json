@@ -1,0 +1,10 @@
+{
+  "id": "00000000-0000-0000-0000-0000000000d1",
+  "modelKey": "nvr",
+  "name": "Test NVR",
+  "type": "UDM-PRO",
+  "guid": "00000000-0000-0000-0000-0000000000e1",
+  "mac": "AABBCC000001",
+  "doorbellSettings": {},
+  "armMode": {"status": "breach", "armProfileId": "00000000-0000-0000-0000-0000000000a1", "armedAt": 1700000300000, "willBeArmedAt": null, "breachDetectedAt": 1700000400000, "breachEventCount": 2, "breachTriggerEventId": "00000000-0000-0000-0000-0000000000f1", "breachEventId": "00000000-0000-0000-0000-0000000000f2"}
+}

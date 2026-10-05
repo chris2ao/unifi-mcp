@@ -1,0 +1,42 @@
+{
+  "offset": 0,
+  "limit": 25,
+  "count": 2,
+  "totalCount": 2,
+  "data": [
+    {
+      "type": "LOCAL",
+      "id": "00000000-0000-0000-0000-000000000052",
+      "members": [
+        {
+          "deviceId": "00000000-0000-0000-0000-0000000000d1",
+          "portIdxs": [
+            3,
+            4
+          ]
+        }
+      ],
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    },
+    {
+      "type": "SWITCH_STACK",
+      "id": "00000000-0000-0000-0000-000000000051",
+      "switchStackId": "00000000-0000-0000-0000-000000000041",
+      "members": [
+        {
+          "unitMacAddress": "aa:bb:cc:00:00:e1",
+          "unitId": 1,
+          "portIdxs": [
+            1,
+            2
+          ]
+        }
+      ],
+      "metadata": {
+        "origin": "USER_DEFINED"
+      }
+    }
+  ]
+}

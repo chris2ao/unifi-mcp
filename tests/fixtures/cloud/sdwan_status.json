@@ -1,0 +1,1 @@
+{"data":{"id":"sdwan-0001","fingerprint":"fp-1","updatedAt":1750000000,"hubs":[{"id":"hub-1","hostId":"h1","siteId":"s1","name":"Hub A","primaryWanStatus":{"ip":"10.0.0.1","latency":9}}]},"httpStatusCode":200,"traceId":"t"}

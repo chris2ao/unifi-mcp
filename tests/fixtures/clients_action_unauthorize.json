@@ -1,0 +1,14 @@
+{
+  "action": "UNAUTHORIZE_GUEST_ACCESS",
+  "revokedAuthorization": {
+    "authorizedAt": "2026-01-01T10:05:00Z",
+    "authorizationMethod": "API",
+    "expiresAt": "2026-01-01T11:05:00Z",
+    "usage": {
+      "durationSec": 600,
+      "rxBytes": 1000,
+      "txBytes": 500,
+      "bytes": 1500
+    }
+  }
+}

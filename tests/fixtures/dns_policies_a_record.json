@@ -1,0 +1,11 @@
+{
+  "type": "A_RECORD",
+  "id": "00000000-0000-0000-0000-0000000000a1",
+  "enabled": true,
+  "metadata": {
+    "origin": "USER_DEFINED"
+  },
+  "domain": "nas.example.com",
+  "ipv4Address": "192.0.2.10",
+  "ttlSeconds": 14400
+}

@@ -1,0 +1,12 @@
+[
+  {
+    "id": "000000000000000000000a01",
+    "name": "Alex Example",
+    "firstName": "Alex",
+    "lastName": "Example",
+    "email": "alex@example.com",
+    "ucoreUserId": "00000000-0000-0000-0000-0000000000a1",
+    "modelKey": "user",
+    "accessToken": "SHOULD-NOT-LEAK"
+  }
+]
