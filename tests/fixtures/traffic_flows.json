@@ -1,52 +1,369 @@
 {
   "data": [
     {
-      "flow_id": "flow001",
-      "src_ip": "192.168.1.100",
-      "dst_ip": "142.250.80.46",
-      "protocol": "tcp",
-      "src_port": 54321,
-      "dst_port": 443,
-      "app_name": "Google",
-      "app_id": "app_google",
-      "bytes_sent": 1048576,
-      "bytes_received": 5242880,
-      "packets_sent": 1024,
-      "packets_received": 4096,
-      "start_time": 1713100000000,
-      "duration": 300
+      "action": "allowed",
+      "count": 1,
+      "destination": {
+        "domains": [
+          "www.example.com"
+        ],
+        "id": "00000000-0000-0000-0000-000000000101",
+        "ip": "203.0.113.10",
+        "mac": "",
+        "network_id": "00000000-0000-0000-0000-0000000000b1",
+        "network_name": "",
+        "port": 443,
+        "subnet": "198.51.100.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c2",
+        "zone_name": "External",
+        "region": "US"
+      },
+      "direction": "outgoing",
+      "duration_milliseconds": 1201,
+      "flow_end_time": 1700000006200,
+      "flow_start_time": 1700000005000,
+      "id": "00000000-0000-0000-0000-000000000201",
+      "in": {
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN"
+      },
+      "next_ai": [],
+      "policies": [
+        {
+          "internal_type": "ALLOW_ALL",
+          "type": "FIREWALL"
+        }
+      ],
+      "protocol": "TCP",
+      "risk": "low",
+      "service": "HTTPS",
+      "source": {
+        "device_model": "",
+        "device_name": "Laptop",
+        "id": "00000000-0000-0000-0000-000000000301",
+        "ip": "10.0.0.11",
+        "mac": "aa:bb:cc:00:00:01",
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN",
+        "port": 40001,
+        "subnet": "10.0.0.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c1",
+        "zone_name": "Internal"
+      },
+      "time": 1700000006200,
+      "traffic_data": {
+        "bytes_rx": 900000,
+        "bytes_total": 905000,
+        "bytes_tx": 5000,
+        "packets_rx": 901,
+        "packets_total": 907,
+        "packets_tx": 6
+      }
     },
     {
-      "flow_id": "flow002",
-      "src_ip": "192.168.1.101",
-      "dst_ip": "31.13.65.36",
-      "protocol": "tcp",
-      "src_port": 12345,
-      "dst_port": 443,
-      "app_name": "Facebook",
-      "app_id": "app_facebook",
-      "bytes_sent": 524288,
-      "bytes_received": 2097152,
-      "packets_sent": 512,
-      "packets_received": 2048,
-      "start_time": 1713100100000,
-      "duration": 120
+      "action": "allowed",
+      "count": 1,
+      "destination": {
+        "domains": [
+          "dns.example.net"
+        ],
+        "id": "00000000-0000-0000-0000-000000000102",
+        "ip": "198.51.100.53",
+        "mac": "",
+        "network_id": "00000000-0000-0000-0000-0000000000b1",
+        "network_name": "",
+        "port": 53,
+        "subnet": "198.51.100.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c2",
+        "zone_name": "External",
+        "region": "US"
+      },
+      "direction": "outgoing",
+      "duration_milliseconds": 1202,
+      "flow_end_time": 1700000005200,
+      "flow_start_time": 1700000004000,
+      "id": "00000000-0000-0000-0000-000000000202",
+      "in": {
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN"
+      },
+      "next_ai": [],
+      "policies": [
+        {
+          "internal_type": "ALLOW_ALL",
+          "type": "FIREWALL"
+        }
+      ],
+      "protocol": "UDP",
+      "risk": "low",
+      "service": "DNS",
+      "source": {
+        "device_model": "",
+        "device_name": "Office TV",
+        "id": "00000000-0000-0000-0000-000000000302",
+        "ip": "10.0.0.12",
+        "mac": "aa:bb:cc:00:00:02",
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN",
+        "port": 40002,
+        "subnet": "10.0.0.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c1",
+        "zone_name": "Internal"
+      },
+      "time": 1700000005200,
+      "traffic_data": {
+        "bytes_rx": 400,
+        "bytes_total": 600,
+        "bytes_tx": 200,
+        "packets_rx": 1,
+        "packets_total": 2,
+        "packets_tx": 1
+      }
     },
     {
-      "flow_id": "flow003",
-      "src_ip": "192.168.1.100",
-      "dst_ip": "8.8.8.8",
-      "protocol": "udp",
-      "src_port": 60000,
-      "dst_port": 53,
-      "app_name": "DNS",
-      "app_id": "app_dns",
-      "bytes_sent": 4096,
-      "bytes_received": 8192,
-      "packets_sent": 32,
-      "packets_received": 32,
-      "start_time": 1713100200000,
-      "duration": 1
+      "action": "blocked",
+      "count": 1,
+      "destination": {
+        "domains": [
+          "ads.example.org",
+          "tracker.example.org"
+        ],
+        "id": "00000000-0000-0000-0000-000000000103",
+        "ip": "203.0.113.77",
+        "mac": "",
+        "network_id": "00000000-0000-0000-0000-0000000000b1",
+        "network_name": "",
+        "port": 80,
+        "subnet": "198.51.100.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c2",
+        "zone_name": "External",
+        "region": "US"
+      },
+      "direction": "outgoing",
+      "duration_milliseconds": 1203,
+      "flow_end_time": 1700000004200,
+      "flow_start_time": 1700000003000,
+      "id": "00000000-0000-0000-0000-000000000203",
+      "in": {
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN"
+      },
+      "next_ai": [],
+      "policies": [
+        {
+          "internal_type": "ALLOW_ALL",
+          "type": "FIREWALL"
+        },
+        {
+          "internal_type": "ALLOW_ALL",
+          "type": "INTRUSION_PREVENTION"
+        }
+      ],
+      "protocol": "TCP",
+      "risk": "medium",
+      "service": "HTTP",
+      "source": {
+        "device_model": "",
+        "device_name": "Laptop",
+        "id": "00000000-0000-0000-0000-000000000303",
+        "ip": "10.0.0.11",
+        "mac": "aa:bb:cc:00:00:01",
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN",
+        "port": 40003,
+        "subnet": "10.0.0.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c1",
+        "zone_name": "Internal"
+      },
+      "time": 1700000004200,
+      "traffic_data": {
+        "bytes_rx": 0,
+        "bytes_total": 300,
+        "bytes_tx": 300,
+        "packets_rx": 1,
+        "packets_total": 2,
+        "packets_tx": 1
+      }
+    },
+    {
+      "action": "allowed",
+      "count": 1,
+      "destination": {
+        "domains": [],
+        "id": "00000000-0000-0000-0000-000000000104",
+        "ip": "10.0.0.20",
+        "mac": "",
+        "network_id": "00000000-0000-0000-0000-0000000000b1",
+        "network_name": "",
+        "port": 8443,
+        "subnet": "198.51.100.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c2",
+        "zone_name": "Internal",
+        "region": "US"
+      },
+      "direction": "incoming",
+      "duration_milliseconds": 1204,
+      "flow_end_time": 1700000003200,
+      "flow_start_time": 1700000002000,
+      "id": "00000000-0000-0000-0000-000000000204",
+      "in": {
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN"
+      },
+      "next_ai": [],
+      "policies": [
+        {
+          "internal_type": "ALLOW_ALL",
+          "type": "FIREWALL"
+        }
+      ],
+      "protocol": "TCP",
+      "risk": "low",
+      "service": "HTTPS",
+      "source": {
+        "device_model": "",
+        "device_name": "",
+        "id": "00000000-0000-0000-0000-000000000304",
+        "ip": "192.0.2.45",
+        "mac": "",
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN",
+        "port": 40004,
+        "subnet": "10.0.0.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c1",
+        "zone_name": "External"
+      },
+      "time": 1700000003200,
+      "traffic_data": {
+        "bytes_rx": 1200,
+        "bytes_total": 1900,
+        "bytes_tx": 700,
+        "packets_rx": 2,
+        "packets_total": 3,
+        "packets_tx": 1
+      }
+    },
+    {
+      "action": "allowed",
+      "count": 1,
+      "destination": {
+        "domains": [],
+        "id": "00000000-0000-0000-0000-000000000105",
+        "ip": "10.0.0.11",
+        "mac": "",
+        "network_id": "00000000-0000-0000-0000-0000000000b1",
+        "network_name": "",
+        "port": 5353,
+        "subnet": "198.51.100.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c2",
+        "zone_name": "Internal",
+        "region": "US"
+      },
+      "direction": "local",
+      "duration_milliseconds": 1205,
+      "flow_end_time": 1700000002200,
+      "flow_start_time": 1700000001000,
+      "id": "00000000-0000-0000-0000-000000000205",
+      "in": {
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN"
+      },
+      "next_ai": [],
+      "policies": [
+        {
+          "internal_type": "ALLOW_ALL",
+          "type": "FIREWALL"
+        }
+      ],
+      "protocol": "UDP",
+      "risk": "low",
+      "source": {
+        "device_model": "",
+        "device_name": "Office TV",
+        "id": "00000000-0000-0000-0000-000000000305",
+        "ip": "10.0.0.12",
+        "mac": "aa:bb:cc:00:00:02",
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN",
+        "port": 40005,
+        "subnet": "10.0.0.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c1",
+        "zone_name": "Internal"
+      },
+      "time": 1700000002200,
+      "traffic_data": {
+        "bytes_rx": 150,
+        "bytes_total": 300,
+        "bytes_tx": 150,
+        "packets_rx": 1,
+        "packets_total": 2,
+        "packets_tx": 1
+      }
+    },
+    {
+      "action": "allowed",
+      "count": 1,
+      "destination": {
+        "domains": [
+          "www.example.com"
+        ],
+        "id": "00000000-0000-0000-0000-000000000106",
+        "ip": "203.0.113.10",
+        "mac": "",
+        "network_id": "00000000-0000-0000-0000-0000000000b1",
+        "network_name": "",
+        "port": 443,
+        "subnet": "198.51.100.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c2",
+        "zone_name": "External",
+        "region": "US"
+      },
+      "direction": "outgoing",
+      "duration_milliseconds": 1206,
+      "flow_end_time": 1700000001200,
+      "flow_start_time": 1700000000000,
+      "id": "00000000-0000-0000-0000-000000000206",
+      "in": {
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN"
+      },
+      "next_ai": [],
+      "policies": [
+        {
+          "internal_type": "ALLOW_ALL",
+          "type": "FIREWALL"
+        }
+      ],
+      "protocol": "TCP",
+      "risk": "low",
+      "service": "HTTPS",
+      "source": {
+        "device_model": "",
+        "device_name": "Office AP Tablet",
+        "id": "00000000-0000-0000-0000-000000000306",
+        "ip": "10.0.0.13",
+        "mac": "aa:bb:cc:00:00:03",
+        "network_id": "00000000-0000-0000-0000-0000000000b2",
+        "network_name": "Main LAN",
+        "port": 40006,
+        "subnet": "10.0.0.0/24",
+        "zone_id": "00000000-0000-0000-0000-0000000000c1",
+        "zone_name": "Internal"
+      },
+      "time": 1700000001200,
+      "traffic_data": {
+        "bytes_rx": 100000,
+        "bytes_total": 102000,
+        "bytes_tx": 2000,
+        "packets_rx": 101,
+        "packets_total": 104,
+        "packets_tx": 3
+      }
     }
-  ]
+  ],
+  "page_number": 0,
+  "total_element_count": 6,
+  "total_page_count": 1,
+  "has_next": false,
+  "or_more": false
 }

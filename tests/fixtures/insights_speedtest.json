@@ -1,0 +1,40 @@
+{
+  "data": [
+    {
+      "id": "st0",
+      "time": 1700000000000,
+      "download_mbps": 0,
+      "upload_mbps": 0,
+      "latency_ms": 0,
+      "interface_name": "eth9",
+      "wan_networkgroup": "WAN"
+    },
+    {
+      "id": "st1",
+      "time": 1700086400000,
+      "download_mbps": 900,
+      "upload_mbps": 800,
+      "latency_ms": 9,
+      "interface_name": "eth9",
+      "wan_networkgroup": "WAN"
+    },
+    {
+      "id": "st2",
+      "time": 1700172800000,
+      "download_mbps": 1800,
+      "upload_mbps": 2200,
+      "latency_ms": 5,
+      "interface_name": "eth9",
+      "wan_networkgroup": "WAN2"
+    },
+    {
+      "id": "st3",
+      "time": 1700259200000,
+      "download_mbps": 1900,
+      "upload_mbps": 2300,
+      "latency_ms": 6,
+      "interface_name": "eth9",
+      "wan_networkgroup": "WAN2"
+    }
+  ]
+}

@@ -2,9 +2,19 @@
 
 Uses the Integration API for zones and V2 API for policies, per the endpoint catalog.
 ZBF requires UniFi Network Application 9.0+.
+
+Policy ids here are v2 "_id" values. They are NOT interchangeable with the
+Integration API policy UUIDs used by the tools in zbf_official.py (use
+list_zbf_policies_v1 to get those).
 """
 
 from unifi_mcp.auth.client import UnifiClient
+
+TIER2_TOOLS = {
+    "create_zbf_policy": "zbf",
+    "update_zbf_policy": "zbf",
+    "delete_zbf_policy": "zbf",
+}
 
 
 def _format_zone(z: dict) -> dict:

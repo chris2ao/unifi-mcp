@@ -40,11 +40,23 @@ uv run python -m unifi_mcp
 
 ## Adding a tool
 
-1. Pick the right product (`network`, `protect`, `access`) and the right module under `src/unifi_mcp/tools/<product>/`.
-2. Define the tool function, decorated via the product registry pattern.
-3. For destructive operations, follow the preview-confirm safety model (see `safety.py`).
-4. Update the tool inventory in `README.md` and the capability matrix in `docs/`.
-5. Add tests under `tests/` using `respx` to mock the UniFi API.
+1. Pick the right product (`network`, `protect`, `access`) and the right module under `src/unifi_mcp/tools/<product>/`. Tool modules are auto-discovered: any module that exports a `TOOLS` list is loaded, so there is no registry to edit.
+2. Declare `GROUP` in the module (Network: `core`, `security` or `insights`; Protect: `cameras` or `devices`) so loaders can register it by group.
+3. For destructive operations, take a `confirm: bool = False` parameter, return `{"preview": True, ...}` when it is false, and declare the tool in the module's `TIER2_TOOLS` dict (tool name to cache category). A test fails if a tool with a `confirm` parameter is not Tier 2 (see `safety.py`).
+4. Add tests under `tests/` using `respx` to mock the UniFi API. Use sanitized fixtures only (documentation IPs such as 192.0.2.x, MACs such as aa:bb:cc:00:00:01, placeholder UUIDs).
+5. Regenerate the tool list with `uv run python scripts/gen_tool_docs.py` and commit `docs/TOOLS.md`. CI runs it with `--check` and fails when the file is stale. Add parameter and return details to `docs/API.md` and update the category table in `README.md`.
+
+## OpenAPI spec workflow
+
+The official UniFi OpenAPI specs are vendored in `docs/specs/` (Network from the console, Protect and Site Manager from developer.ui.com). After a firmware upgrade, or before adding tools for an endpoint:
+
+```bash
+uv run python scripts/spec_diff.py                # compare live specs with the vendored copies (GET only)
+uv run python scripts/spec_diff.py --update       # write new vendored copies
+uv run python scripts/spec_coverage.py            # which official operations have tools
+```
+
+The diff needs `UNIFI_HOST` and `UNIFI_API_KEY` for the Network spec and honors `UNIFI_VERIFY_SSL`. See `docs/SPEC_MAINTENANCE.md` for what is compared and how to act on a change.
 
 ## Pull request process
 

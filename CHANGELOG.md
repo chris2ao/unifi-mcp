@@ -5,6 +5,74 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.6.0] - 2026-10-04
+
+Network official API tools, working traffic flows and insights on Network 10.6, server infrastructure (auto-discovered tool modules, tool groups, firmware drift), and OpenAPI spec tooling. This release also carries the Network 10.6 regression fixes and server hardening that were prepared as v0.5.1 and were never tagged separately.
+
+### Added
+
+- Tool groups. `load_network_tools` and `load_protect_tools` take an optional `groups` argument (network: `core`, `security`, `insights`; protect: `cameras`, `devices`). `"all"` and the `network:core` prefix form are accepted, and repeated calls are incremental: only the new tools register. Unknown groups return an `Unknown ... Available: ...` message.
+- `list_tool_groups` (always loaded): groups, modules, tool counts and loaded state per product. The server now starts with 7 always-loaded tools.
+- `UNIFI_TOOL_GROUPS` environment variable (for example `network:core,network:security,protect:cameras`). Unset loads every group; a product that is not mentioned loads all of its groups. Invalid entries fail at startup.
+- `get_server_info` reports `console_versions`, `verified_versions`, `drift` and `drift_hint`, so a console firmware that differs from the tested versions (Network 10.6.106, Protect 7.2.105) is visible. Lookups are best effort and never fail the call.
+- Traffic flows (rewritten on the 10.6 query endpoint): `get_blocked_flows` and `get_flow_summary` (counts by action, risk, direction and protocol, top services, and total bytes over a sample of up to 2000 flows).
+- Insights (group `insights`): `get_dashboard_summary`, `get_speedtest_history`, `get_wan_status`.
+- DNS policies (group `security`): `list_dns_policies`, `get_dns_policy`, `create_dns_policy` (Tier 2), `update_dns_policy` (Tier 2), `delete_dns_policy` (Tier 2). Types: A, AAAA, CNAME, MX, TXT, SRV, FORWARD_DOMAIN. New cache category `dns`.
+- Traffic matching lists (group `security`): `list_traffic_matching_lists`, `get_traffic_matching_list`, `create_traffic_matching_list` (Tier 2), `update_traffic_matching_list` (Tier 2), `delete_traffic_matching_list` (Tier 2).
+- Official zone-based firewall tools (group `security`): `get_zbf_policy`, `list_zbf_policies_v1`, `get_zbf_policy_order`, `toggle_zbf_policy` (Tier 2), `set_zbf_policy_logging` (Tier 2), `reorder_zbf_policies` (Tier 2), `create_zbf_zone` (Tier 2), `update_zbf_zone` (Tier 2), `delete_zbf_zone` (Tier 2).
+- Device tools on the Integration API (group `core`): `get_device_statistics`, `get_device_details_v1`, `list_pending_devices`, `power_cycle_port` (Tier 2, category `devices`, previews the connected device and warns when PoE is down).
+- `get_network_references`: what still references a network (devices, clients, WiFi, routes, NAT), accepting the legacy id or the Integration UUID.
+- `get_event_counts`: System Log event totals grouped by category, event and type.
+- `get_mutation_log` and an in-memory audit log of confirmed Tier 2 changes (secret-looking params masked). `UNIFI_PREVIEW_TTL_SECONDS` (default 600) sets how long a preview stays valid.
+- `UnifiClient.get_all_pages` for Integration API `offset`/`limit` pagination with `filter` support.
+- `scripts/spec_diff.py`, `scripts/spec_coverage.py`, vendored OpenAPI specs in `docs/specs/` (Network 10.6.106, Protect 7.3.70, Site Manager 1.0.0) and `docs/SPEC_MAINTENANCE.md`. `spec_diff.py` compares request bodies (including polymorphic subtypes), 2xx response schemas, parameters and limits; the console fetch honors `UNIFI_VERIFY_SSL`, refuses plain http and never follows redirects.
+- `scripts/gen_tool_docs.py` generates `docs/TOOLS.md` (every tool with group, tier and description). CI runs it with `--check` and fails on a stale file. It refuses to run when tracked tool modules have unstaged edits.
+- `websockets>=13` dependency.
+
+### Changed
+
+- Tool modules are auto-discovered: any module under `tools/<product>/` that exports `TOOLS` is loaded, with module-level `GROUP` and `TIER2_TOOLS` declarations. Module `TIER2_TOOLS` entries are merged into the `SafetyManager`; the legacy map in `safety.py` is kept (keyed by module) so existing tools stay Tier 2. A module that fails to import is skipped with a message on stderr instead of breaking the server.
+- Preview-then-confirm is enforced by the server: a `confirm=True` call without a matching recent preview returns `PREVIEW_REQUIRED`. Previews are single use.
+- `get_events` and `get_alarms` read the System Log on Network 10.6 (`system-log/all`). `get_events` gains `hours`, `categories`, `severities` and `page`; `get_alarms` gains `hours`. The legacy `category` argument still works (`threats` maps to the SECURITY category).
+- Traffic flow tools return dict envelopes (`window_minutes`, `total_matching`, `returned`, `flows`) instead of the old `PRODUCT_UNAVAILABLE` list. `filter_flows_by_client` takes `client_ip` and/or `client_mac`. Results are a sample sorted newest first, because the console returns flows unordered. All pages of one scan share one time window.
+- `delete_network` previews list the resources that still reference the network.
+- `get_server_info` reports the installed package version (it was hardcoded).
+- Protect stub messages name Protect 7.2.105 and spec 7.3.70.
+- `list_webhooks`, `create_webhook` and `delete_webhook` are `PRODUCT_UNAVAILABLE` stubs: the notifications endpoint returns 404 on Network 10.6.106.
+- Tested firmware is now UniFi Network 10.6.106 and UniFi Protect 7.2.105.
+
+### Fixed
+
+- `update_dns_policy` ignores response fields the policy type does not accept, so a field added by newer firmware cannot make every update fail.
+- `delete_dns_policy` and `delete_traffic_matching_list` previews read the record, show what will be deleted, and return `NOT_FOUND` for an unknown id.
+- `create_zbf_zone` and `update_zbf_zone` accept the legacy network ids from `list_networks` (mapped to Integration UUIDs by network name) and give a network-specific error for bad ids.
+- `power_cycle_port` rejects ports with PoE disabled and warns when the port reports PoE state DOWN.
+- Dashboard summaries skip unexpected response shapes instead of raising.
+
+### Removed
+
+- `ptz_camera` stub. The published Protect spec has PTZ endpoints, so a stub that claims PTZ is unavailable was wrong; PTZ support is planned for a later release.
+- The README troubleshooting entry saying traffic flows are unavailable.
+
+### Security
+
+- `spec_diff.py` no longer sends the console API key over plain http, no longer ignores `UNIFI_VERIFY_SSL`, refuses redirects, and validates the console-reported spec version before using it in a file name.
+- Vendored specs are published upstream content; example CIDRs in the Site Manager spec are not home-network data.
+
+### Notes
+
+- Integration API policy ids are UUIDs and are not the v2 `_id` values returned by `list_zbf_policies`. Use `list_zbf_policies_v1` for ids accepted by the official ZBF tools.
+- `toggle_zbf_policy` uses GET then PUT because the PATCH schema (10.6.106) only accepts `loggingEnabled`. The write paths of the new tools were verified with previews and unit tests; confirmed writes were not run against a live console.
+- Official-endpoint coverage from `scripts/spec_coverage.py`: Network 46.6% (34 of 73 operations), Protect 10.8% (8 of 74). Site Manager has no tools in this release (0 of 14). Coverage matches by path only, not HTTP method.
+- Known limits: `reorder_zbf_policies` splits the list using the current before/after section sizes; if another admin moves policies between preview and confirm, preview again. `toggle_zbf_policy` does not yet refuse system-defined policies in the preview, and the console rejects the change.
+- Upgrade: no configuration changes are required. Callers of `filter_flows_by_client` or the traffic flow tools must handle dict results instead of lists. Callers of `ptz_camera` get a missing-tool error.
+
+## [0.5.0] - 2026-06-14
+
+### Added
+
+- Timestamped client history: `get_client_history` accepts `start` and `end` (epoch ms) and an `interval` (`hourly` or `daily`), and client records surface wired tx/rx byte counters so wired clients report real volume.
+
 ## [0.4.1] - 2026-06-13
 
 ### Fixed
@@ -98,6 +166,9 @@ This release was driven by a real-world incident on 2026-04-18 where an offline 
 - Lazy per-product tool loading to keep the initial tool list small.
 - Claude Code plugin bundle with installation guide, setup instructions, and API reference.
 
+[0.6.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.6.0
+[0.5.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.5.0
+[0.4.1]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.4.1
 [0.4.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.4.0
 [0.3.1]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.3.1
 [0.3.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.3.0

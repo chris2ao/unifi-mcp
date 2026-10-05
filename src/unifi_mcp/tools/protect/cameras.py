@@ -98,29 +98,20 @@ async def update_camera_name(client: UnifiClient, camera_id: str, name: str) -> 
     }
 
 
-# Integration API on Protect 7.0.104 does not expose recording-mode control,
-# camera reboot, or PTZ. Every probe returns 404 or AJV schema rejection. These
+# Integration API on Protect 7.2.105 does not expose recording-mode control
+# or camera reboot. Every probe returns 404 or AJV schema rejection. These
 # tools follow the project's PRODUCT_UNAVAILABLE precedent (see events.py).
 
 _RECORDING_UNAVAILABLE = {
     "error": True,
     "category": "PRODUCT_UNAVAILABLE",
     "message": (
-        "Camera recording-mode control is not exposed on this firmware via the "
-        "API-key Integration API. PATCH /cameras/{id} rejects any "
-        "recording-related property with AJV_PARSE_ERROR. Change recording mode "
-        "in the Protect web/mobile UI."
-    ),
-}
-
-_PTZ_UNAVAILABLE = {
-    "error": True,
-    "category": "PRODUCT_UNAVAILABLE",
-    "message": (
-        "PTZ control is not exposed on this firmware via the API-key "
-        "Integration API. /cameras/{id}/ptz, /ptz/position, /ptz/presets all "
-        "return 404 and PATCH rejects activePatrolSlot. Use the Protect "
-        "web/mobile UI for PTZ movement and patrols."
+        "Camera recording-mode control is not available through the Protect "
+        "Integration API (verified on Protect 7.2.105, spec v7.3.70). Camera "
+        "PATCH /v1/cameras/{id} has no recording-mode field; it accepts only "
+        "name, osdSettings, ledSettings, lcdMessage, micVolume, videoMode, "
+        "hdrType and smartDetectSettings. Change recording mode in the Protect "
+        "web or mobile UI."
     ),
 }
 
@@ -129,19 +120,14 @@ async def set_camera_recording_mode(
     client: UnifiClient, camera_id: str, mode: str, confirm: bool = False,
 ) -> dict:
     """Set recording mode (always|motion|never). Currently unavailable via API key."""
-    return _RECORDING_UNAVAILABLE
+    return dict(_RECORDING_UNAVAILABLE)
 
 
-async def ptz_camera(
-    client: UnifiClient, camera_id: str, pan: float | None = None,
-    tilt: float | None = None, zoom: float | None = None, preset_id: str | None = None,
-    confirm: bool = False,
-) -> dict:
-    """Move a PTZ camera. Currently unavailable via API key."""
-    return _PTZ_UNAVAILABLE
+set_camera_recording_mode.never_previews = True  # stub: no preview is ever produced, see server._run_guarded
 
+TIER2_TOOLS: dict[str, str] = {}
 
 TOOLS = [
     list_cameras, get_camera, get_camera_snapshot, list_liveviews,
-    update_camera_name, set_camera_recording_mode, ptz_camera,
+    update_camera_name, set_camera_recording_mode,
 ]

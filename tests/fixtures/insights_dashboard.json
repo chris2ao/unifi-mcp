@@ -1,0 +1,229 @@
+{
+  "dashboard_meta": {
+    "start_timestamp": 1700000000000,
+    "end_timestamp": 1700086400000,
+    "layout": "custom",
+    "widgets": [
+      "most_active_clients"
+    ]
+  },
+  "wifi_doctor": {
+    "in_progress": false,
+    "in_progress_in_site": false,
+    "actions": [
+      {
+        "id": "OPTIMIZE_IOT_CONNECTIVITY",
+        "optimization_status": "PENDING"
+      },
+      {
+        "id": "UPDATE_DEVICE_FIRMWARE",
+        "optimization_status": "COMPLETED",
+        "upgradable_devices": []
+      },
+      {
+        "id": "INTER_ROAMING_ENHANCEMENT",
+        "optimization_status": "COMPLETED"
+      }
+    ]
+  },
+  "isp_metrics": {
+    "no_stats_reason": "no_data"
+  },
+  "cybersecure": {
+    "enterprise": false,
+    "has_subscription": true,
+    "ips_enabled": true,
+    "is_activating": false,
+    "scanned_bytes": 410000000000,
+    "signature_capacity": 70000,
+    "signatures": 74000,
+    "threats": 12,
+    "updated_timestamp": 1700080000000
+  },
+  "most_active_clients": {
+    "total_bytes": 5000000,
+    "usage_by_client": [
+      {
+        "display_name": "Laptop",
+        "mac": "aa:bb:cc:00:00:01",
+        "is_wired": true,
+        "oui": "Example Corp",
+        "received_bytes": 3000000,
+        "transmitted_bytes": 1000000,
+        "total_bytes": 4000000,
+        "fingerprint": {
+          "dev_id": 1
+        }
+      },
+      {
+        "display_name": "Office TV",
+        "mac": "aa:bb:cc:00:00:02",
+        "is_wired": false,
+        "oui": "Example Corp",
+        "received_bytes": 800000,
+        "transmitted_bytes": 200000,
+        "total_bytes": 1000000,
+        "fingerprint": {
+          "dev_id": 2
+        }
+      }
+    ]
+  },
+  "most_active_aps": {
+    "total_bytes": 900000,
+    "usage_by_ap": [
+      {
+        "mac": "aa:bb:cc:00:01:01",
+        "ap_details": {
+          "model": "U7PRO",
+          "name": "Office AP",
+          "type": "uap"
+        },
+        "received_bytes": 600000,
+        "transmitted_bytes": 200000,
+        "total_bytes": 800000,
+        "satisfaction": 99
+      }
+    ]
+  },
+  "traffic_identification": {
+    "rx_bytes": 9000,
+    "tx_bytes": 1000,
+    "usage_by_app": [
+      {
+        "application": 185,
+        "category": 20,
+        "bytes_received": 8000,
+        "bytes_transmitted": 500,
+        "total_bytes": 8500
+      }
+    ]
+  },
+  "wan_activity": {
+    "activity_by_network_group": {
+      "WAN": {
+        "history": [
+          {
+            "timestamp": 1700000000000,
+            "avg_latency_ms": 4.0,
+            "max_latency_ms": 6.0,
+            "avg_packet_loss_pct": 0.0,
+            "avg_rx_rate_bps": 1000000.0,
+            "avg_tx_rate_bps": 500000.0,
+            "max_rx_rate_bps": 9000000.0,
+            "max_tx_rate_bps": 2000000.0
+          },
+          {
+            "timestamp": 1700000300000,
+            "avg_latency_ms": 8.0,
+            "max_latency_ms": 12.0,
+            "avg_packet_loss_pct": 1.0,
+            "avg_rx_rate_bps": 3000000.0,
+            "avg_tx_rate_bps": 700000.0,
+            "max_rx_rate_bps": 11000000.0,
+            "max_tx_rate_bps": 3000000.0
+          }
+        ],
+        "summary": {
+          "rx_bytes": 277000000,
+          "tx_bytes": 133000000
+        }
+      }
+    },
+    "network_groups": [
+      {
+        "name": "WAN",
+        "isp_name": [
+          "Example ISP"
+        ],
+        "isp_asn": [
+          64500
+        ]
+      }
+    ]
+  },
+  "upgradable_device_count": {
+    "device_count": 2
+  },
+  "wifi_connectivity": {
+    "radio_connectivity": [
+      {
+        "radio_filter": "na",
+        "attempts": {
+          "success_ratio": 100.0,
+          "failed_client_connections": 0,
+          "total_attempts": 39
+        }
+      },
+      {
+        "radio_filter": "ng",
+        "attempts": {
+          "success_ratio": 92.5,
+          "failed_client_connections": 3,
+          "total_attempts": 40
+        }
+      }
+    ]
+  },
+  "internet": {
+    "downtime_history": [
+      {
+        "id": "a1",
+        "timestamp": 1700050000000,
+        "downtime_in_seconds": 120,
+        "wan_network_group": "WAN"
+      },
+      {
+        "id": "a2",
+        "timestamp": 1700060000000,
+        "downtime_in_seconds": 30,
+        "wan_network_group": "WAN"
+      }
+    ],
+    "health_history": [
+      {
+        "timestamp": 1,
+        "wan_downtime": false,
+        "high_latency": false,
+        "packet_loss": false
+      },
+      {
+        "timestamp": 2,
+        "wan_downtime": true,
+        "high_latency": false,
+        "packet_loss": true
+      },
+      {
+        "timestamp": 3,
+        "wan_downtime": false,
+        "high_latency": true,
+        "packet_loss": false
+      }
+    ],
+    "monitors": [
+      {
+        "wan_networkgroup": "WAN",
+        "service_latencies": [
+          {
+            "service_name": "google",
+            "latency": 16
+          },
+          {
+            "service_name": "cloudflare"
+          }
+        ]
+      }
+    ],
+    "speed_test": {
+      "cron_schedule": "0 5 * * *",
+      "latest": {
+        "id": "st3",
+        "time": 1700080000000,
+        "download_mbps": 900,
+        "upload_mbps": 800,
+        "latency_ms": 9,
+        "wan_networkgroup": "WAN"
+      }
+    }
+  }
+}

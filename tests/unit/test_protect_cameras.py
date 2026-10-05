@@ -97,7 +97,7 @@ async def test_list_liveviews(mock_client):
 
 def test_camera_tools_list():
     from unifi_mcp.tools.protect.cameras import TOOLS
-    assert len(TOOLS) == 7
+    assert len(TOOLS) == 6
 
 
 @respx.mock
@@ -135,6 +135,8 @@ async def test_set_camera_recording_mode_returns_product_unavailable(mock_client
     assert result["error"] is True
     assert result["category"] == "PRODUCT_UNAVAILABLE"
     assert "recording-mode" in result["message"]
+    assert "7.3.70" in result["message"]
+    assert "smartDetectSettings" in result["message"]
 
 
 @pytest.mark.asyncio
@@ -150,20 +152,14 @@ async def test_set_camera_recording_mode_does_not_call_api(mock_client):
 
 
 @pytest.mark.asyncio
-async def test_ptz_camera_returns_product_unavailable(mock_client):
-    from unifi_mcp.tools.protect.cameras import ptz_camera
+async def test_protect_stubs_return_independent_dicts(mock_client):
+    from unifi_mcp.tools.protect.cameras import set_camera_recording_mode
+    from unifi_mcp.tools.protect.devices import reboot_camera
 
-    result = await ptz_camera(mock_client, camera_id=CAM_ID, pan=90.0, tilt=0.0)
-    assert result["error"] is True
-    assert result["category"] == "PRODUCT_UNAVAILABLE"
-    assert "PTZ" in result["message"]
-
-
-@pytest.mark.asyncio
-async def test_ptz_camera_does_not_call_api_even_with_confirm(mock_client):
-    from unifi_mcp.tools.protect.cameras import ptz_camera
-
-    with respx.mock(assert_all_called=False) as mocker:
-        route = mocker.post(f"{BASE}/proxy/protect/integration/v1/cameras/{CAM_ID}/ptz")
-        await ptz_camera(mock_client, camera_id=CAM_ID, preset_id="home", confirm=True)
-        assert not route.called
+    for call in (
+        lambda: set_camera_recording_mode(mock_client, camera_id=CAM_ID, mode="always"),
+        lambda: reboot_camera(mock_client, camera_id=CAM_ID),
+    ):
+        first = await call()
+        first["message"] = "mutated"
+        assert (await call())["message"] != "mutated"

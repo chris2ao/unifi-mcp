@@ -1,0 +1,60 @@
+{
+  "id": "00000000-0000-0000-0000-0000000000a1",
+  "macAddress": "aa:bb:cc:00:00:01",
+  "ipAddress": "192.0.2.10",
+  "name": "Office Switch",
+  "model": "USW Flex 2.5G 8 PoE",
+  "supported": true,
+  "state": "ONLINE",
+  "firmwareVersion": "2.1.0",
+  "firmwareUpdatable": false,
+  "adoptedAt": "2026-01-01T00:00:00Z",
+  "provisionedAt": "2026-01-02T00:00:00Z",
+  "configurationId": "cfg0001",
+  "uplink": {
+    "deviceId": "00000000-0000-0000-0000-0000000000a2"
+  },
+  "features": {
+    "switching": {
+      "lags": []
+    }
+  },
+  "interfaces": {
+    "ports": [
+      {
+        "idx": 1,
+        "state": "UP",
+        "connector": "RJ45",
+        "maxSpeedMbps": 2500,
+        "speedMbps": 2500,
+        "poe": {
+          "standard": "802.3bt",
+          "type": 3,
+          "enabled": true,
+          "state": "DOWN"
+        }
+      },
+      {
+        "idx": 2,
+        "state": "UP",
+        "connector": "RJ45",
+        "maxSpeedMbps": 2500,
+        "speedMbps": 100,
+        "poe": {
+          "standard": "802.3bt",
+          "type": 3,
+          "enabled": true,
+          "state": "UP"
+        }
+      },
+      {
+        "idx": 8,
+        "state": "UP",
+        "connector": "SFPPLUS",
+        "maxSpeedMbps": 10000,
+        "speedMbps": 10000
+      }
+    ],
+    "radios": []
+  }
+}

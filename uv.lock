@@ -164,13 +164,14 @@ wheels = [
 
 [[package]]
 name = "chris2ao-unifi-mcp"
-version = "0.5.0"
+version = "0.6.0"
 source = { editable = "." }
 dependencies = [
     { name = "fastmcp" },
     { name = "httpx" },
     { name = "pydantic" },
     { name = "pydantic-settings" },
+    { name = "websockets" },
 ]
 
 [package.optional-dependencies]
@@ -191,6 +192,7 @@ requires-dist = [
     { name = "pytest-asyncio", marker = "extra == 'dev'", specifier = ">=0.23" },
     { name = "pytest-cov", marker = "extra == 'dev'", specifier = ">=5.0" },
     { name = "respx", marker = "extra == 'dev'", specifier = ">=0.21" },
+    { name = "websockets", specifier = ">=13" },
 ]
 provides-extras = ["dev"]
 

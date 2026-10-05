@@ -188,3 +188,238 @@ async def test_discovery_logs_requests(client):
     assert report[0]["endpoint"] == "/proxy/network/api/s/default/stat/sysinfo"
     assert report[0]["method"] == "GET"
     assert report[0]["status_code"] == 200
+
+
+# --- Query parameters and Integration API pagination (v0.5.1) ---
+
+INTEG = "https://192.168.1.1/proxy/network/integration/v1/sites/uuid-1/clients"
+
+
+@pytest.fixture
+def site_client(client):
+    client._site_id = "uuid-1"
+    return client
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_encodes_query_params(client):
+    route = respx.get("https://192.168.1.1/proxy/network/integration/v1/sites").mock(
+        return_value=httpx.Response(200, json={"data": []})
+    )
+    await client.get(
+        "/proxy/network/integration/v1/sites",
+        params={"filter": "name.eq('Office AP')", "limit": 5, "skip": None},
+    )
+    request = route.calls.last.request
+    assert request.url.params["filter"] == "name.eq('Office AP')"
+    assert request.url.params["limit"] == "5"
+    assert "skip" not in request.url.params
+    # Spaces and quotes must be percent-encoded on the wire.
+    assert b" " not in request.url.raw_path
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_without_params_sends_no_query(client):
+    route = respx.get("https://192.168.1.1/proxy/network/api/s/default/stat/device").mock(
+        return_value=httpx.Response(200, json={"data": []})
+    )
+    await client.get("/proxy/network/api/s/{site}/stat/device")
+    assert route.calls.last.request.url.query == b""
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_bool_params_are_lowercase(client):
+    route = respx.get("https://192.168.1.1/x").mock(
+        return_value=httpx.Response(200, json={})
+    )
+    await client.get("/x", params={"flag": True, "other": False})
+    assert route.calls.last.request.url.params["flag"] == "true"
+    assert route.calls.last.request.url.params["other"] == "false"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_cache_key_includes_params(client):
+    route = respx.get("https://192.168.1.1/x").mock(
+        side_effect=[
+            httpx.Response(200, json={"n": 1}),
+            httpx.Response(200, json={"n": 2}),
+        ]
+    )
+    a = await client.get("/x", cache_category="c", cache_ttl=30.0, params={"offset": 0})
+    b = await client.get("/x", cache_category="c", cache_ttl=30.0, params={"offset": 25})
+    a2 = await client.get("/x", cache_category="c", cache_ttl=30.0, params={"offset": 0})
+    assert a == {"n": 1}
+    assert b == {"n": 2}
+    assert a2 == {"n": 1}
+    assert route.call_count == 2
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_params_cache_invalidated_by_category(client):
+    route = respx.get("https://192.168.1.1/x").mock(
+        return_value=httpx.Response(200, json={"n": 1})
+    )
+    await client.get("/x", cache_category="c", cache_ttl=30.0, params={"offset": 0})
+    client.invalidate_cache("c")
+    await client.get("/x", cache_category="c", cache_ttl=30.0, params={"offset": 0})
+    assert route.call_count == 2
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_does_not_mutate_params(client):
+    respx.get("https://192.168.1.1/x").mock(return_value=httpx.Response(200, json={}))
+    params = {"a": 1, "b": None}
+    await client.get("/x", params=params)
+    assert params == {"a": 1, "b": None}
+
+
+def _page(items, offset, total):
+    return {"offset": offset, "limit": len(items), "count": len(items),
+            "totalCount": total, "data": items}
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_all_pages_follows_offsets_until_total(site_client):
+    route = respx.get(INTEG).mock(side_effect=[
+        httpx.Response(200, json=_page([{"id": 1}, {"id": 2}], 0, 5)),
+        httpx.Response(200, json=_page([{"id": 3}, {"id": 4}], 2, 5)),
+        httpx.Response(200, json=_page([{"id": 5}], 4, 5)),
+    ])
+    items = await site_client.get_all_pages(
+        "/proxy/network/integration/v1/sites/{site_id}/clients", page_size=2,
+    )
+    assert [i["id"] for i in items] == [1, 2, 3, 4, 5]
+    offsets = [c.request.url.params["offset"] for c in route.calls]
+    limits = [c.request.url.params["limit"] for c in route.calls]
+    assert offsets == ["0", "2", "4"]
+    assert limits == ["2", "2", "2"]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_all_pages_stops_when_total_reached_exactly(site_client):
+    route = respx.get(INTEG).mock(side_effect=[
+        httpx.Response(200, json=_page([{"id": 1}, {"id": 2}], 0, 4)),
+        httpx.Response(200, json=_page([{"id": 3}, {"id": 4}], 2, 4)),
+    ])
+    items = await site_client.get_all_pages(
+        "/proxy/network/integration/v1/sites/{site_id}/clients", page_size=2,
+    )
+    assert len(items) == 4
+    assert route.call_count == 2
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_all_pages_stops_on_short_page_without_total(site_client):
+    route = respx.get(INTEG).mock(side_effect=[
+        httpx.Response(200, json={"data": [{"id": 1}, {"id": 2}]}),
+        httpx.Response(200, json={"data": [{"id": 3}]}),
+    ])
+    items = await site_client.get_all_pages(
+        "/proxy/network/integration/v1/sites/{site_id}/clients", page_size=2,
+    )
+    assert len(items) == 3
+    assert route.call_count == 2
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_all_pages_stops_on_empty_page(site_client):
+    route = respx.get(INTEG).mock(side_effect=[
+        httpx.Response(200, json={"data": [{"id": 1}, {"id": 2}]}),
+        httpx.Response(200, json={"data": []}),
+    ])
+    items = await site_client.get_all_pages(
+        "/proxy/network/integration/v1/sites/{site_id}/clients", page_size=2,
+    )
+    assert len(items) == 2
+    assert route.call_count == 2
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_all_pages_respects_max_items(site_client):
+    route = respx.get(INTEG).mock(side_effect=[
+        httpx.Response(200, json=_page([{"id": i} for i in range(3)], 0, 100)),
+        httpx.Response(200, json=_page([{"id": i} for i in range(3, 5)], 3, 100)),
+    ])
+    items = await site_client.get_all_pages(
+        "/proxy/network/integration/v1/sites/{site_id}/clients",
+        page_size=3, max_items=5,
+    )
+    assert len(items) == 5
+    assert route.call_count == 2
+    # The last request only asks for what is still needed.
+    assert route.calls.last.request.url.params["limit"] == "2"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_all_pages_passes_filter_and_defaults(site_client):
+    route = respx.get(INTEG).mock(
+        return_value=httpx.Response(200, json=_page([{"id": 1}], 0, 1))
+    )
+    items = await site_client.get_all_pages(
+        "/proxy/network/integration/v1/sites/{site_id}/clients",
+        filter="type.eq('WIRED')",
+    )
+    assert items == [{"id": 1}]
+    params = route.calls.last.request.url.params
+    assert params["filter"] == "type.eq('WIRED')"
+    assert params["limit"] == "200"
+    assert params["offset"] == "0"
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_all_pages_bare_list_response(site_client):
+    route = respx.get(INTEG).mock(
+        return_value=httpx.Response(200, json=[{"id": 1}, {"id": 2}])
+    )
+    items = await site_client.get_all_pages(
+        "/proxy/network/integration/v1/sites/{site_id}/clients", max_items=1,
+    )
+    assert items == [{"id": 1}]
+    assert route.call_count == 1
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_get_all_pages_uses_cache(site_client):
+    route = respx.get(INTEG).mock(
+        return_value=httpx.Response(200, json=_page([{"id": 1}], 0, 1))
+    )
+    for _ in range(2):
+        await site_client.get_all_pages(
+            "/proxy/network/integration/v1/sites/{site_id}/clients",
+            cache_category="clients", cache_ttl=30.0,
+        )
+    assert route.call_count == 1
+
+
+@pytest.mark.asyncio
+async def test_get_all_pages_zero_max_items_makes_no_call(site_client):
+    assert await site_client.get_all_pages("/x", max_items=0) == []
+
+
+@pytest.mark.asyncio
+@pytest.mark.parametrize("size", [0, -1, 1001])
+async def test_get_all_pages_rejects_bad_page_size(site_client, size):
+    with pytest.raises(ValueError):
+        await site_client.get_all_pages("/x", page_size=size)
+
+
+def test_page_items_handles_unexpected_shapes():
+    from unifi_mcp.auth.client import _page_items
+
+    assert _page_items(None) == ([], None)
+    assert _page_items({"data": "x", "totalCount": "5"}) == ([], None)
+    assert _page_items({"data": [1], "totalCount": 1}) == ([1], 1)

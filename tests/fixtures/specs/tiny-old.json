@@ -1,0 +1,89 @@
+{
+  "components": {
+    "schemas": {
+      "Nested": {
+        "properties": {
+          "level": {
+            "type": "integer"
+          },
+          "self": {
+            "$ref": "#/components/schemas/Nested"
+          }
+        },
+        "type": "object"
+      },
+      "Widget": {
+        "properties": {
+          "mode": {
+            "enum": [
+              "A",
+              "B"
+            ],
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "nested": {
+            "$ref": "#/components/schemas/Nested"
+          },
+          "tags": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          }
+        },
+        "required": [
+          "name"
+        ],
+        "type": "object"
+      }
+    }
+  },
+  "info": {
+    "title": "Tiny API",
+    "version": "1.0.0"
+  },
+  "openapi": "3.1.0",
+  "paths": {
+    "/v1/sites/{siteId}/gadgets": {
+      "get": {}
+    },
+    "/v1/sites/{siteId}/widgets": {
+      "get": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ]
+      },
+      "post": {
+        "parameters": [
+          {
+            "in": "path",
+            "name": "siteId",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/Widget"
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

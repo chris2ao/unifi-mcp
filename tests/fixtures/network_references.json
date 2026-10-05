@@ -1,0 +1,25 @@
+{
+  "referenceResources": [
+    {
+      "resourceType": "DEVICE",
+      "referenceCount": 2,
+      "references": [
+        {
+          "referenceId": "00000000-0000-0000-0000-0000000000a1"
+        },
+        {
+          "referenceId": "00000000-0000-0000-0000-0000000000a2"
+        }
+      ]
+    },
+    {
+      "resourceType": "WIFI",
+      "referenceCount": 1,
+      "references": [
+        {
+          "referenceId": "00000000-0000-0000-0000-0000000000b1"
+        }
+      ]
+    }
+  ]
+}

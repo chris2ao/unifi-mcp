@@ -8,20 +8,25 @@ Tools marked with **(Tier 2)** use the preview-confirm pattern: call with `confi
 
 ## Utility Tools (Always Available)
 
-These 5 tools are registered at server startup, before any product loader is called.
+These 7 tools are registered at server startup, before any product loader is called. `load_cloud_tools` is added to this set when the Site Manager (cloud) tools ship in a later release.
 
 ### load_network_tools
 
-Load all UniFi Network management tools.
+Load UniFi Network tools, optionally only some groups.
 
-- **Parameters:** None
+- **Parameters:** `groups: list[str] | None = None`
+- **Groups:** `core` (system, devices, clients, networks, WiFi, topology, backups, hotspot, port profiles), `security` (firewall, zone-based firewall, DNS policies, traffic matching lists, MAC ACL, RADIUS, port forwarding, traffic rules, QoS, VPN, webhooks) and `insights` (DPI, traffic flows, dashboard summary, speed tests, WAN status).
+- **Group syntax:** names may be passed bare (`"core"`), with the product prefix (`"network:core"`), or as `"all"`. Omit `groups` to use `UNIFI_TOOL_GROUPS`, or to load every group when that is unset.
+- **Incremental:** calling again with more groups registers only the new tools; reloading a loaded group is a no-op. An unknown group returns an `Unknown ... Available: ...` message and registers nothing.
 - **Returns:** `str` (summary of registered tools, or message if product not detected)
 
 ### load_protect_tools
 
-Load UniFi Protect tools (cameras, motion events, recordings, smart detection).
+Load UniFi Protect tools, optionally only some groups.
 
-- **Parameters:** None
+- **Parameters:** `groups: list[str] | None = None`
+- **Groups:** `cameras` (cameras, events, live views), `devices` (NVRs). A `security` group (Alarm Manager) is announced for a later release; in this release it is reported as unknown.
+- **Behavior:** same group syntax and incremental loading as `load_network_tools`.
 - **Returns:** `str`
 
 ### load_access_tools
@@ -30,6 +35,13 @@ Load UniFi Access tools (door control, NFC/PIN credentials, visitor passes, acce
 
 - **Parameters:** None
 - **Returns:** `str`
+
+### list_tool_groups
+
+List the tool groups each product loader can register: group name, modules, tool count, and whether it is loaded. Does not contact the console.
+
+- **Parameters:** None
+- **Returns:** `dict` with the per-product group report, `default_groups` (the `UNIFI_TOOL_GROUPS` value, or `"all"`), and a `usage` hint
 
 ### get_auth_report
 
@@ -40,14 +52,21 @@ Get the auth discovery report showing API key success/failure per endpoint.
 
 ### get_server_info
 
-Get server status including loaded products and tool counts.
+Get server status: package version, console, site, preview TTL, loaded products and groups, and console firmware drift.
 
 - **Parameters:** None
-- **Returns:** `dict` with keys: `server`, `version`, `console`, `site`, `products`
+- **Returns:** `dict` with keys: `server`, `version` (the installed package version), `console`, `site`, `preview_ttl_seconds`, `products` (loaded tools and groups per product), `console_versions` (Network and Protect versions the console reports, `null` when unknown), `verified_versions` (the versions this server was tested against: Network 10.6.106, Protect 7.2.105), `drift` (products whose major.minor differs from the verified version) and `drift_hint`. Version lookups are best effort and never fail the call.
+
+### get_mutation_log
+
+Get the audit log of confirmed Tier 2 changes made in this server session, oldest first.
+
+- **Parameters:** None
+- **Returns:** `list[dict]` with keys: `tool`, `params` (secret-looking values masked as `***`), result summary, UTC timestamp. In memory only; resets when the server restarts.
 
 ---
 
-## Devices (12 tools)
+## Devices (16 tools)
 
 Module: `tools/network/devices.py`
 
@@ -135,6 +154,44 @@ Get uplink information for a device.
 - **Parameters:** `mac: str`
 - **Returns:** `dict` with keys: mac, name, uplink_mac, uplink_device_name, type, speed
 
+Module: `tools/network/device_ops.py`
+
+The official Integration API device tools. Device arguments accept the Integration API device UUID or a MAC address.
+
+### get_device_statistics
+
+Get latest live statistics for one adopted device (Integration API).
+
+Use for health checks: uptime, CPU %, memory %, load averages, uplink tx/rx rate (bits per second) and per-radio retry %. `device` is the Integration device id or the MAC address.
+
+- **Parameters:** `device: str`
+- **Returns:** `dict`
+
+### get_device_details_v1
+
+Get Integration API details for one adopted device.
+
+Returns features (switching, accessPoint), ports (state, speed, PoE), radios, firmware version and update flag, and provisioning timestamps. `device` is the Integration device id or the MAC address.
+
+- **Parameters:** `device: str`
+- **Returns:** `dict`
+
+### list_pending_devices
+
+List devices waiting to be adopted (Integration API, console-wide).
+
+- **Parameters:** None
+- **Returns:** `list[dict]`
+
+### power_cycle_port **(Tier 2)**
+
+Power cycle (PoE off then on) one switch port to reboot the device on it.
+
+Use to recover a hung camera, AP or other PoE device. `device` is the switch's Integration id or MAC; `port_idx` is the 1-based port number. The powered device loses power and reboots. Requires confirm=True after previewing.
+
+- **Parameters:** `device: str`, `port_idx: int`, `confirm: bool = False`
+- **Returns:** `dict`
+
 ---
 
 ## Clients (8 tools)
@@ -199,7 +256,7 @@ Get hourly usage history for a client.
 
 ---
 
-## Networks/VLANs (6 tools)
+## Networks/VLANs (7 tools)
 
 Module: `tools/network/networks.py`
 
@@ -233,10 +290,13 @@ Update an existing network.
 
 ### delete_network **(Tier 2)**
 
-Delete a network. Irreversible.
+Delete a network. Requires confirm=True after previewing.
+
+The preview lists resources that still reference the network.
 
 - **Parameters:** `network_id: str`, `confirm: bool = False`
 - **Returns:** `dict`
+
 
 ### get_dhcp_leases
 
@@ -244,6 +304,15 @@ Get active DHCP leases for a specific network.
 
 - **Parameters:** `network_id: str`
 - **Returns:** `list[dict]` with keys: mac, hostname, ip, name
+
+### get_network_references
+
+List what still references a network (devices, clients, WiFi, routes, NAT).
+
+Use before deleting or changing a network. Accepts the Integration network id (UUID) or the legacy network id from list_networks. Output is grouped by resource type with counts and (up to 20) referencing ids.
+
+- **Parameters:** `network_id: str`
+- **Returns:** `dict`
 
 ---
 
@@ -309,7 +378,7 @@ Delete a firewall group.
 
 ---
 
-## Zone-Based Firewall (6 tools)
+## Zone-Based Firewall (15 tools)
 
 Module: `tools/network/zbf.py`
 
@@ -355,6 +424,189 @@ Update an existing ZBF policy.
 Delete a ZBF firewall policy.
 
 - **Parameters:** `policy_id: str`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### Official API tools and id types
+
+Modules: `tools/network/zbf_official.py` and `tools/network/zbf_zones_official.py`.
+
+The tools below use the official Integration API (`/firewall/policies`, `/firewall/zones`, spec 10.6.106). Policy ids from the Integration API are UUIDs and are **not** the same as the v2 `_id` values returned by `list_zbf_policies` (verified on Network 10.6.106: no overlap across 88 policies). Use `list_zbf_policies_v1` to get Integration ids; every tool below validates ids as UUIDs and returns a `VALIDATION_ERROR` naming the id type needed. Zone ids come from `list_zbf_zones`. Network ids passed to the zone tools may be Integration UUIDs or the legacy ids from `list_networks` (mapped by network name).
+
+### get_zbf_policy
+
+Get one zone-based firewall policy by Integration API id (UUID from list_zbf_policies_v1).
+
+Returns action, source/destination zone and traffic filters, logging, schedule and origin. Do not pass v2 '_id' values from list_zbf_policies; they are a different id type.
+
+- **Parameters:** `policy_id: str`
+- **Returns:** `dict`
+
+### list_zbf_policies_v1
+
+List ZBF policies via the official API (all pages), with Integration UUID ids.
+
+Use this to get the policy ids needed by get_zbf_policy, toggle_zbf_policy, set_zbf_policy_logging and reorder_zbf_policies. Optional source_zone_id and destination_zone_id (zone UUIDs from list_zbf_zones) narrow the result; filter is the official API filter expression passed through unchanged.
+
+- **Parameters:** `source_zone_id: str | None = None`, `destination_zone_id: str | None = None`, `filter: str | None = None`
+- **Returns:** `list[dict]`
+
+### toggle_zbf_policy **(Tier 2)**
+
+Enable or disable a ZBF policy by Integration UUID. Requires confirm=True after previewing.
+
+The PATCH endpoint only accepts loggingEnabled, so this reads the policy and sends the merged body with PUT. Disabling a policy can open or close traffic paths between zones immediately.
+
+- **Parameters:** `policy_id: str`, `enabled: bool`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### set_zbf_policy_logging **(Tier 2)**
+
+Turn syslog logging on or off for a ZBF policy (PATCH loggingEnabled). Requires confirm=True after previewing.
+
+policy_id is the Integration UUID from list_zbf_policies_v1. Logging only affects syslog output, not which traffic is allowed.
+
+- **Parameters:** `policy_id: str`, `logging_enabled: bool`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### get_zbf_policy_order
+
+Get the user-defined policy order for one source/destination zone pair.
+
+Both ids are zone UUIDs from list_zbf_zones. Returns policy ids (UUIDs) in evaluation order, split into before_system_defined (evaluated ahead of the built-in policies) and after_system_defined.
+
+- **Parameters:** `source_zone_id: str`, `destination_zone_id: str`
+- **Returns:** `dict`
+
+### reorder_zbf_policies **(Tier 2)**
+
+Reorder user-defined ZBF policies for a zone pair. Requires confirm=True after previewing.
+
+ordered_policy_ids is the complete desired order of policy UUIDs (from get_zbf_policy_order); it must contain exactly the current set. Without after_system_defined_ids the before/after-system-defined section sizes are kept; pass after_system_defined_ids to set that section explicitly (then ordered_policy_ids is the before-system-defined section).
+
+- **Parameters:** `source_zone_id: str`, `destination_zone_id: str`, `ordered_policy_ids: list[str]`, `after_system_defined_ids: list[str] | None = None`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### create_zbf_zone **(Tier 2)**
+
+Create a custom firewall zone with name and network_ids (network UUIDs or list_networks ids; may be empty). Requires confirm=True after previewing.
+
+- **Parameters:** `name: str`, `network_ids: list[str]`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### update_zbf_zone **(Tier 2)**
+
+Rename a zone and/or replace its network_ids (GET-merge-PUT). Requires confirm=True after previewing.
+
+Omitted fields keep their current value. network_ids replaces the whole list. System-defined zones accept network changes only, not renames.
+
+- **Parameters:** `zone_id: str`, `name: str | None = None`, `network_ids: list[str] | None = None`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### delete_zbf_zone **(Tier 2)**
+
+Delete a custom (user-defined) firewall zone by UUID. Requires confirm=True after previewing.
+
+System-defined zones (Internal, External, Gateway, Vpn, Hotspot, Dmz) cannot be deleted. Policies and networks that reference the zone may be affected.
+
+- **Parameters:** `zone_id: str`, `confirm: bool = False`
+- **Returns:** `dict`
+
+---
+
+## DNS Policies (5 tools)
+
+Module: `tools/network/dns_policies.py`
+
+Local DNS records and conditional forwarding through the official Integration API (`/dns/policies`). Supported types: A, AAAA, CNAME, MX, TXT, SRV and FORWARD_DOMAIN. Cache category: `dns`.
+
+### list_dns_policies
+
+List DNS policies (local DNS records and domain forwarders) on the gateway.
+
+Optional ``type`` is one of A_RECORD, AAAA_RECORD, CNAME_RECORD, MX_RECORD, TXT_RECORD, SRV_RECORD, FORWARD_DOMAIN. Optional ``filter`` is an official filter expression such as ``domain.like('*.example.com')``; filterable properties: type, id, enabled, domain, ipv4Address, ipv6Address, targetDomain, mailServerDomain, text, serverDomain, ipAddress, ttlSeconds, priority, service, protocol, port, weight. Follows pagination.
+
+- **Parameters:** `type: str | None = None`, `filter: str | None = None`
+- **Returns:** `list[dict] | dict`
+
+### get_dns_policy
+
+Get one DNS policy by its UUID, including all type-specific fields and ttl.
+
+- **Parameters:** `policy_id: str`
+- **Returns:** `dict`
+
+### create_dns_policy **(Tier 2)**
+
+Create a DNS policy (local record or domain forwarder). Requires confirm=True after previewing.
+
+Pass ``type`` plus only the fields for that type. A_RECORD: ipv4_address, ttl_seconds. AAAA_RECORD: ipv6_address, ttl_seconds. CNAME_RECORD: target_domain, ttl_seconds. MX_RECORD: mail_server_domain, priority. TXT_RECORD: text. SRV_RECORD: server_domain, service (e.g. '_ldap'), protocol (e.g. '_tcp'), port, priority, weight. FORWARD_DOMAIN: ip_address of the DNS server queries for the domain are forwarded to. ttl_seconds (A/AAAA up to 86400, CNAME up to 604800) defaults to 14400.
+
+- **Parameters:** `type: str`, `domain: str`, `ipv4_address: str | None = None`, `ipv6_address: str | None = None`, `target_domain: str | None = None`, `mail_server_domain: str | None = None`, `text: str | None = None`, `server_domain: str | None = None`, `service: str | None = None`, `protocol: str | None = None`, `port: int | None = None`, `priority: int | None = None`, `weight: int | None = None`, `ip_address: str | None = None`, `ttl_seconds: int | None = None`, `enabled: bool = True`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### update_dns_policy **(Tier 2)**
+
+Update fields of an existing DNS policy. Requires confirm=True after previewing.
+
+``updates`` holds only the fields to change, using API names (domain, ipv4Address, ttlSeconds, enabled, ...); snake_case such as ttl_seconds is accepted. The policy type cannot be changed. The current policy is read, merged with ``updates`` and the full body is sent, because PUT replaces the policy.
+
+- **Parameters:** `policy_id: str`, `updates: dict`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### delete_dns_policy **(Tier 2)**
+
+Delete a DNS policy by UUID. Requires confirm=True after previewing.
+
+- **Parameters:** `policy_id: str`, `confirm: bool = False`
+- **Returns:** `dict`
+
+---
+
+## Traffic Matching Lists (5 tools)
+
+Module: `tools/network/traffic_matching_lists.py`
+
+Reusable IP address and port lists for firewall policies, through the official Integration API (`/traffic-matching-lists`). Cache category: `zbf`.
+
+### list_traffic_matching_lists
+
+List traffic matching lists (reusable port or IP sets referenced by firewall policies).
+
+Optional ``type`` filters to PORTS, IPV4_ADDRESSES or IPV6_ADDRESSES. Each result has id, name, type and items. Follows pagination.
+
+- **Parameters:** `type: str | None = None`
+- **Returns:** `list[dict] | dict`
+
+### get_traffic_matching_list
+
+Get one traffic matching list by UUID, including all its port or IP items.
+
+- **Parameters:** `list_id: str`
+- **Returns:** `dict`
+
+### create_traffic_matching_list **(Tier 2)**
+
+Create a traffic matching list. Requires confirm=True after previewing.
+
+``type`` is PORTS, IPV4_ADDRESSES or IPV6_ADDRESSES. ``items`` is a non-empty list. Ports: 443, "8000-8100" (1-65535) or spec objects. IPv4: "192.0.2.5", "198.51.100.0/24", "10.0.0.10-10.0.0.20". IPv6: "2001:db8::1", "2001:db8:1::/64" (no ranges). Spec objects like {"type": "SUBNET", "value": "..."} are also accepted.
+
+- **Parameters:** `name: str`, `type: str`, `items: list`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### update_traffic_matching_list **(Tier 2)**
+
+Update a traffic matching list's name and/or items. Requires confirm=True after previewing.
+
+Pass ``name``, ``items`` or both. ``items`` REPLACES the whole item set (same shorthand as create_traffic_matching_list). The list type cannot be changed. The current list is read and the full body is sent, because PUT replaces the list.
+
+- **Parameters:** `list_id: str`, `name: str | None = None`, `items: list | None = None`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### delete_traffic_matching_list **(Tier 2)**
+
+Delete a traffic matching list by UUID. Requires confirm=True after previewing.
+
+- **Parameters:** `list_id: str`, `confirm: bool = False`
 - **Returns:** `dict`
 
 ---
@@ -579,39 +831,102 @@ Get the port table for a specific device (switches, gateways).
 
 ---
 
-## Traffic Flows (4 tools)
+## Traffic Flows (6 tools)
 
 Module: `tools/network/traffic_flows.py`
 
-Reference: enuno/unifi-mcp-server. Uses the Integration API.
+Uses the v2 query endpoint `POST /proxy/network/v2/api/site/{site}/traffic-flows` (verified on Network 10.6.106; GET is 405). Flows are large (10,000+ per hour) and come back unordered, so tools cap the window at 7 days, the page size at 500 and the scan at 5,000 flows, and report `truncated` when more existed. The console caps `total_matching` at 10,000. Every tool returns a dict envelope (`window_minutes`, `total_matching`, `returned`, `flows`), not a bare list. Group: `insights`.
 
 ### list_traffic_flows
 
-List recent traffic flows with source, destination, protocol, and app info.
+List recent network traffic flows (per-connection records), sorted newest first.
 
-- **Parameters:** `limit: int = 50`
-- **Returns:** `list[dict]` (flow records)
+The console returns flows unordered, so on a busy network this is the newest of a sample of up to `limit` matching flows, not guaranteed the newest overall.
+
+Use to inspect what connections happened in the last `minutes` (1 to 10080, default 60). `limit` caps flows returned (1 to 500, default 50). Optional filters: direction (local|outgoing|incoming), protocol (TCP, UDP, ICMP...), action (allowed|blocked), risk (low|medium|high), search (free text over IPs, device names, domains, services). Each flow is compact with bytes_*, source and destination.
+
+- **Parameters:** `minutes: int = 60`, `limit: int = 50`, `direction: str | None = None`, `protocol: str | None = None`, `action: str | None = None`, `risk: str | None = None`, `search: str | None = None`
+- **Returns:** `dict`
 
 ### get_top_talkers
 
-Get top traffic flows sorted by total bytes (sent + received).
+Rank top traffic talkers by bytes over the last `minutes` (default 60).
 
-- **Parameters:** `limit: int = 10`
-- **Returns:** `list[dict]` (sorted flow records)
+`by` groups by source (client IP), destination (remote IP), service (HTTPS, DNS...) or domain. Aggregates bytes_total client-side over up to `max_flows` sampled flows (100 to 5000, default 2000); the result reports flows_scanned and truncated so totals are a sample when truncated is true. `limit` is how many rows to return (1 to 100).
+
+- **Parameters:** `minutes: int = 60`, `limit: int = 10`, `by: str = 'source'`, `max_flows: int = 2000`
+- **Returns:** `dict`
 
 ### filter_flows_by_app
 
-Filter traffic flows by application name (case-insensitive match).
+Find traffic flows for an application, service or domain by name.
 
-- **Parameters:** `app_name: str`
-- **Returns:** `list[dict]`
+`app_name` is a free-text search (for example "google", "netflix", "dns", "youtube.com") matched by the console against service, domains, and device names. Window `minutes` (1 to 10080, default 60); `limit` 1 to 500.
+
+- **Parameters:** `app_name: str`, `minutes: int = 60`, `limit: int = 50`
+- **Returns:** `dict`
 
 ### filter_flows_by_client
 
-Filter traffic flows by source or destination IP address.
+Find traffic flows to or from one client, by IP address or MAC address.
 
-- **Parameters:** `client_ip: str`
-- **Returns:** `list[dict]`
+Provide `client_ip` (for example 10.0.0.11) and/or `client_mac`. Matches the client as source or destination, sorted newest first (a sample, since the console returns flows unordered). Window `minutes` (1 to 10080, default 60); `limit` 1 to 500.
+
+- **Parameters:** `client_ip: str | None = None`, `client_mac: str | None = None`, `minutes: int = 60`, `limit: int = 50`
+- **Returns:** `dict`
+
+### get_blocked_flows
+
+List flows the firewall or threat engine blocked, sorted newest first (a sample).
+
+Use to see what was denied (policy blocks, IPS, ad blocking, content filtering). Window `minutes` (1 to 10080, default 60); `limit` 1 to 500.
+
+- **Parameters:** `minutes: int = 60`, `limit: int = 50`
+- **Returns:** `dict`
+
+### get_flow_summary
+
+Summarize traffic over the last `minutes` (1 to 10080, default 60).
+
+Returns counts by action, risk, direction and protocol, the top services by flow count and bytes, and total bytes, computed over up to 2000 sampled flows (see flows_scanned and truncated). Use as a first look before drilling in with list_traffic_flows or get_top_talkers.
+
+- **Parameters:** `minutes: int = 60`
+- **Returns:** `dict`
+
+---
+
+## Insights (3 tools)
+
+Module: `tools/network/insights.py`
+
+Read-only health views built on the aggregated dashboard, speed test and load-balancing endpoints. Group: `insights`.
+
+### get_dashboard_summary
+
+Get a one-call health overview of the network (the UniFi dashboard, summarized).
+
+Use for "how is my network doing". Covers the last ~24h: WiFi Doctor optimization status, ISP metrics, CyberSecure (IPS threats), most active clients and APs, top app ids, WAN latency/loss/throughput per uplink, upgradable device count, WiFi connection success per radio, and internet downtime plus latest speed test.
+
+- **Parameters:** None
+- **Returns:** `dict`
+
+### get_speedtest_history
+
+Get WAN speed test history, newest first, with an average summary.
+
+`limit` caps results (1 to 200, default 20). `wan` filters to one uplink by network group name (WAN, WAN2; case-insensitive). `since_days` (1 to 3650) only returns tests from the last N days (server-side timestampFrom). A download of 0 Mbps means the test failed.
+
+- **Parameters:** `limit: int = 20`, `wan: str | None = None`, `since_days: int | None = None`
+- **Returns:** `dict`
+
+### get_wan_status
+
+Get the live state of each WAN uplink (ACTIVE, BACKUP, ...) with names and ids.
+
+Combines load-balancing status (state per WAN network group) with the Integration API WAN list (name and id). Use to see which uplink carries traffic and which are standby or in another state.
+
+- **Parameters:** None
+- **Returns:** `dict`
 
 ---
 
@@ -716,80 +1031,95 @@ Restore a controller backup. Replaces ALL settings and restarts the controller.
 
 ---
 
-## Webhooks (3 tools)
+## Webhooks (3 tools, PRODUCT_UNAVAILABLE stubs)
 
 Module: `tools/network/webhooks.py`
 
-Reference: enuno/unifi-mcp-server.
+Network 9.x moved webhook recipients to `/v2/api/site/{site}/notifications`, and on Network 10.6.106 that path returns 404 as well. The three tools stay registered and return the `PRODUCT_UNAVAILABLE` envelope without calling the console. `create_webhook` and `delete_webhook` accept `confirm` for signature compatibility and are marked `never_previews`, so `confirm=True` returns the explanation instead of a preview loop. Manage webhook recipients in the Network web UI.
 
 ### list_webhooks
 
-List all configured webhooks.
+List webhook recipients. Currently unavailable via the API.
 
 - **Parameters:** None
-- **Returns:** `list[dict]` with keys: id, name, url, enabled
-
-### create_webhook
-
-Create a new webhook.
-
-- **Parameters:** `name: str`, `url: str`, `enabled: bool = True`
 - **Returns:** `dict`
 
-### delete_webhook
+### create_webhook **(Tier 2)**
 
-Delete a webhook.
+Create a webhook recipient. Currently unavailable via the API.
 
-- **Parameters:** `webhook_id: str`
+- **Parameters:** `name: str`, `url: str`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### delete_webhook **(Tier 2)**
+
+Delete a webhook recipient. Currently unavailable via the API.
+
+- **Parameters:** `webhook_id: str`, `confirm: bool = False`
 - **Returns:** `dict`
 
 ---
 
-## System (4 tools)
+## System (5 tools)
 
 Module: `tools/network/system.py`
+
+Network 10.6 serves events from the System Log (`POST /v2/api/site/{site}/system-log/all` and `/count`). The older `stat/event` and `stat/alarm` paths return 404 on 10.6.106, so events and alarms are both built on `system-log/all`.
 
 ### get_system_info
 
 Get UniFi controller system information including version, hostname, and uptime.
 
 - **Parameters:** None
-- **Returns:** `dict` with keys: hostname, name, version, build, timezone, uptime, uptime_human, update_available, autobackup
+- **Returns:** `dict`
 
 ### get_health
 
 Get health status for all subsystems (WAN, WLAN, LAN, VPN).
 
 - **Parameters:** None
-- **Returns:** `list[dict]` (per-subsystem health data)
+- **Returns:** `list[dict]`
 
 ### get_alarms
 
-Get active alarms from the UniFi controller.
+Get recent alarms: HIGH and VERY_HIGH severity System Log events (threats blocked, WAN failover, outages).
 
-- **Parameters:** None
-- **Returns:** `list[dict]` (alarm records)
+Network 10.6 removed the legacy alarm list, so alarms are the high-severity System Log entries. hours: look-back window in hours (1 to 2160, default 168 = 7 days). limit: max alarms returned (1 to 1000), newest first. Each item has the same compact shape as get_events.
+
+- **Parameters:** `hours: float = 168`, `limit: int = 50`
+- **Returns:** `list[dict]`
 
 ### get_events
 
-Get recent events from the UniFi controller.
+Get UniFi Network System Log events (client connects, threats, admin access, WAN, updates), newest first.
 
-- **Parameters:** `limit: int = 50`
-- **Returns:** `list[dict]` (event records)
+hours: look-back window in hours (1 to 2160). limit: page size and max events returned (1 to 1000). page: 0-based page for older events. categories: any of AUDIT, CLIENT_DEVICES, INTERNET_AND_WAN, POWER, SECURITY, SOFTWARE_UPDATES, UNIFI_DEVICES, UNIFI_ETHERNET_PORTS, UNKNOWN, VPN. severities: any of INFO, LOW, MEDIUM, WARNING, HIGH, VERY_HIGH. category: deprecated, "threats" equals categories=["SECURITY"] and "triggers" means all; ignored when categories is given. Returns a list of compact events: id, time (ISO 8601 UTC), category, subcategory, severity, key, event, type, title, message (rendered text) and target ({type, id, name, ip}). Use get_event_counts for totals in a window.
+
+- **Parameters:** `limit: int = 50`, `hours: float = 24`, `categories: list[str] | None = None`, `severities: list[str] | None = None`, `page: int = 0`, `category: str | None = None`
+- **Returns:** `list[dict]`
+
+### get_event_counts
+
+Count System Log events in a time window, grouped by category, event name and coarse type.
+
+Use for a quick overview before paging through get_events. hours: look-back window (1 to 2160). Optional categories / severities filters take the same values as get_events. Returns {hours, time_from, time_to, total, by_category, by_event, by_type}, each map sorted by count descending. by_event keys match each event's `event` field in get_events (for example CLIENT_CONNECTED_WIRELESS), not its `key` field. by_type is a coarse AUDIT/GENERAL split and does not match the per-event `type` field.
+
+- **Parameters:** `hours: float = 24`, `categories: list[str] | None = None`, `severities: list[str] | None = None`
+- **Returns:** `dict`
 
 ---
 
-## UniFi Protect (Phase 2, 12 tools)
+## UniFi Protect (11 tools)
 
 Module: `tools/protect/`. Register with `load_protect_tools`.
 
 Protect tools run against the Integration API at `/proxy/protect/integration/v1/`, which accepts the same `X-API-Key` header as the Network surface. This is a different API than the legacy `/proxy/protect/api/` surface (which requires cookie auth and is out of scope).
 
-Tested firmware: **Protect 7.0.104**. The Integration API on this firmware exposes a limited surface: cameras (list/get/snapshot/rename), liveviews (list), NVRs (list/get). It does not expose per-event queries, recording-mode control, PTZ, or camera reboot. The five tools that cannot execute on this firmware register as PRODUCT_UNAVAILABLE stubs (see below) so callers can discover them and route around them deliberately.
+Tested firmware: **Protect 7.2.105** (published spec 7.3.70). The Integration API on this firmware exposes cameras (list/get/snapshot/rename), liveviews (list) and NVRs (list/get). It does not expose per-event queries, recording-mode control or camera reboot. The four tools that cannot execute register as PRODUCT_UNAVAILABLE stubs (see below) so callers can discover them and route around them deliberately. The `ptz_camera` stub was removed in this release because the published spec has PTZ endpoints; PTZ support is planned for a later release.
 
 ### Error envelope: `PRODUCT_UNAVAILABLE`
 
-Five tools in this surface return the following envelope when the required endpoint is not available on the connected firmware. Callers can branch on `result.get("error") is True` and `result.get("category") == "PRODUCT_UNAVAILABLE"` to handle these stubs without tripping over the actual error handlers used for network failures.
+Four tools in this surface return the following envelope when the required endpoint is not available on the connected firmware. Callers can branch on `result.get("error") is True` and `result.get("category") == "PRODUCT_UNAVAILABLE"` to handle these stubs without tripping over the actual error handlers used for network failures.
 
 ```json
 {
@@ -801,7 +1131,7 @@ Five tools in this surface return the following envelope when the required endpo
 
 ---
 
-## Cameras (7 tools)
+## Cameras (6 tools)
 
 Module: `tools/protect/cameras.py`
 
@@ -849,7 +1179,7 @@ Rename a camera. Cosmetic change, no service disruption.
 - **Returns:** `dict` with keys: `executed: True`, `action: "update_camera_name"`, `camera_id`, `name` (the updated name as returned by the API)
 - **Side effect:** Invalidates the `protect_cameras` cache.
 - **Endpoint:** PATCH /proxy/protect/integration/v1/cameras/{id} with body `{"name": "..."}`
-- **Note:** No confirm flag required (Tier 1). Live-verified against the G5 PTZ on Protect 7.0.104. This is the only Tier 1 mutation available in the Protect surface on this firmware.
+- **Note:** No confirm flag required (Tier 1). Live-verified against the G5 PTZ on Protect 7.2.105. This is the only Tier 1 mutation available in the Protect surface on this firmware.
 
 ### set_camera_recording_mode **(PRODUCT_UNAVAILABLE stub)**
 
@@ -857,17 +1187,9 @@ Attempt to change a camera's recording mode.
 
 - **Parameters:** `camera_id: str`, `mode: str` (`"always"` | `"motion"` | `"never"`), `confirm: bool = False`
 - **Returns:** PRODUCT_UNAVAILABLE envelope
-- **Why stubbed:** PATCH /cameras/{id} on Protect 7.0.104 rejects every recording-related property shape (`mode`, `recording`, `recordingMode`, `recordingSettings.mode`, `settings.recordingMode`) with `AJV_PARSE_ERROR: must NOT have additional properties`. The strict JSON Schema on this firmware only accepts fields visible in the GET response, none of which relate to recording mode.
+- **Why stubbed:** PATCH /cameras/{id} on Protect 7.2.105 has no recording-mode field. The spec (7.3.70) accepts only `name`, `osdSettings`, `ledSettings`, `lcdMessage`, `micVolume`, `videoMode`, `hdrType` and `smartDetectSettings`.
 - **Future behavior:** When UniFi ships recording mode in the Integration API, the "no network call" unit test will fail and force a proper implementation with a Tier 2 confirm flow.
 - **Future endpoint:** likely PATCH /cameras/{id} with `{"recordingSettings": {"mode": "..."}}` once the schema accepts it.
-
-### ptz_camera **(PRODUCT_UNAVAILABLE stub)**
-
-Attempt PTZ movement (pan, tilt, zoom) or preset recall on a camera.
-
-- **Parameters:** `camera_id: str`, `pan: float | None`, `tilt: float | None`, `zoom: float | None`, `preset_id: str | None`, `confirm: bool = False`
-- **Returns:** PRODUCT_UNAVAILABLE envelope
-- **Why stubbed:** All PTZ probe paths return 404 on Protect 7.0.104: `/cameras/{id}/ptz`, `/cameras/{id}/ptz/position`, `/cameras/{id}/ptz/presets`, `/cameras/{id}/goto`, `/cameras/{id}/patrol`, `/cameras/{id}/pan`, `/cameras/{id}/tilt`, `/cameras/{id}/zoom`, `/cameras/{id}/move`. PATCH `activePatrolSlot` is also rejected by the schema.
 
 ---
 
@@ -899,7 +1221,7 @@ Attempt to reboot a camera via the Integration API.
 
 - **Parameters:** `camera_id: str`, `confirm: bool = False`
 - **Returns:** PRODUCT_UNAVAILABLE envelope
-- **Why stubbed:** POST /cameras/{id}/reboot, POST /cameras/{id}/restart, PUT /cameras/{id}/reboot, and POST /nvrs/reboot all return 404 on Protect 7.0.104.
+- **Why stubbed:** POST /cameras/{id}/reboot, POST /cameras/{id}/restart, PUT /cameras/{id}/reboot, and POST /nvrs/reboot all return 404 on Protect 7.2.105, and the spec 7.3.70 has no reboot endpoint for cameras or NVRs.
 
 ---
 

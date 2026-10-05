@@ -440,47 +440,35 @@ def test_qos_tools_list():
     assert len(TOOLS) == 2
 
 
-# --- Webhooks ---
+# --- Webhooks (PRODUCT_UNAVAILABLE stubs) ---
 
-@respx.mock
 @pytest.mark.asyncio
-async def test_list_webhooks(mock_client):
+async def test_webhook_stubs_return_product_unavailable(mock_client):
+    from unifi_mcp.tools.network.webhooks import (
+        create_webhook, delete_webhook, list_webhooks,
+    )
+
+    results = [
+        await list_webhooks(mock_client),
+        await create_webhook(mock_client, name="New Hook", url="https://hooks.example.com/new"),
+        await delete_webhook(mock_client, webhook_id="wh001"),
+    ]
+    for result in results:
+        assert result["error"] is True
+        assert result["category"] == "PRODUCT_UNAVAILABLE"
+        assert "10.6.106" in result["message"]
+
+
+@pytest.mark.asyncio
+async def test_webhook_stubs_return_independent_dicts(mock_client):
     from unifi_mcp.tools.network.webhooks import list_webhooks
 
-    respx.get(f"{BASE}/proxy/network/v2/api/site/default/notifications").mock(
-        return_value=httpx.Response(200, json={"data": [
-            {"_id": "wh001", "name": "Alert Hook", "url": "https://hooks.example.com/alert", "enabled": True}
-        ]})
-    )
-    result = await list_webhooks(mock_client)
-    assert len(result) == 1
-    assert result[0]["name"] == "Alert Hook"
-
-
-@respx.mock
-@pytest.mark.asyncio
-async def test_create_webhook(mock_client):
-    from unifi_mcp.tools.network.webhooks import create_webhook
-
-    respx.post(f"{BASE}/proxy/network/v2/api/site/default/notifications").mock(
-        return_value=httpx.Response(200, json={"data": {"_id": "wh_new", "name": "New Hook"}})
-    )
-    result = await create_webhook(mock_client, name="New Hook", url="https://hooks.example.com/new")
-    assert result["action"] == "create_webhook"
-
-
-@respx.mock
-@pytest.mark.asyncio
-async def test_delete_webhook(mock_client):
-    from unifi_mcp.tools.network.webhooks import delete_webhook
-
-    respx.delete(f"{BASE}/proxy/network/v2/api/site/default/notifications/wh001").mock(
-        return_value=httpx.Response(200, json={"data": {}})
-    )
-    result = await delete_webhook(mock_client, webhook_id="wh001")
-    assert result["action"] == "delete_webhook"
+    first = await list_webhooks(mock_client)
+    first["message"] = "mutated"
+    assert (await list_webhooks(mock_client))["message"] != "mutated"
 
 
 def test_webhooks_tools_list():
-    from unifi_mcp.tools.network.webhooks import TOOLS
+    from unifi_mcp.tools.network.webhooks import TOOLS, create_webhook, delete_webhook
     assert len(TOOLS) == 3
+    assert create_webhook.never_previews and delete_webhook.never_previews

@@ -1,0 +1,63 @@
+{
+  "offset": 0,
+  "limit": 200,
+  "count": 3,
+  "totalCount": 3,
+  "data": [
+    {
+      "type": "PORTS",
+      "id": "00000000-0000-0000-0000-0000000000b1",
+      "name": "Web ports",
+      "items": [
+        {
+          "type": "PORT_NUMBER",
+          "value": 80
+        },
+        {
+          "type": "PORT_NUMBER",
+          "value": 443
+        },
+        {
+          "type": "PORT_NUMBER_RANGE",
+          "start": 8000,
+          "stop": 8100
+        }
+      ]
+    },
+    {
+      "type": "IPV4_ADDRESSES",
+      "id": "00000000-0000-0000-0000-0000000000b2",
+      "name": "Office hosts",
+      "items": [
+        {
+          "type": "IP_ADDRESS",
+          "value": "192.0.2.5"
+        },
+        {
+          "type": "SUBNET",
+          "value": "198.51.100.0/24"
+        },
+        {
+          "type": "IP_ADDRESS_RANGE",
+          "start": "10.0.0.10",
+          "stop": "10.0.0.20"
+        }
+      ]
+    },
+    {
+      "type": "IPV6_ADDRESSES",
+      "id": "00000000-0000-0000-0000-0000000000b3",
+      "name": "Lab v6",
+      "items": [
+        {
+          "type": "IP_ADDRESS",
+          "value": "2001:db8::1"
+        },
+        {
+          "type": "SUBNET",
+          "value": "2001:db8:1::/64"
+        }
+      ]
+    }
+  ]
+}

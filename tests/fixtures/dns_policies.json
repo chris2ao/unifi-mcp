@@ -1,0 +1,87 @@
+{
+  "offset": 0,
+  "limit": 200,
+  "count": 7,
+  "totalCount": 7,
+  "data": [
+    {
+      "type": "A_RECORD",
+      "id": "00000000-0000-0000-0000-0000000000a1",
+      "enabled": true,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      },
+      "domain": "nas.example.com",
+      "ipv4Address": "192.0.2.10",
+      "ttlSeconds": 14400
+    },
+    {
+      "type": "AAAA_RECORD",
+      "id": "00000000-0000-0000-0000-0000000000a2",
+      "enabled": true,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      },
+      "domain": "nas.example.com",
+      "ipv6Address": "2001:db8::10",
+      "ttlSeconds": 14400
+    },
+    {
+      "type": "CNAME_RECORD",
+      "id": "00000000-0000-0000-0000-0000000000a3",
+      "enabled": false,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      },
+      "domain": "files.example.com",
+      "targetDomain": "nas.example.com",
+      "ttlSeconds": 3600
+    },
+    {
+      "type": "MX_RECORD",
+      "id": "00000000-0000-0000-0000-0000000000a4",
+      "enabled": true,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      },
+      "domain": "example.com",
+      "mailServerDomain": "mail.example.com",
+      "priority": 10
+    },
+    {
+      "type": "TXT_RECORD",
+      "id": "00000000-0000-0000-0000-0000000000a5",
+      "enabled": true,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      },
+      "domain": "example.com",
+      "text": "v=spf1 -all"
+    },
+    {
+      "type": "SRV_RECORD",
+      "id": "00000000-0000-0000-0000-0000000000a6",
+      "enabled": true,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      },
+      "domain": "example.com",
+      "serverDomain": "ldap.example.com",
+      "service": "_ldap",
+      "protocol": "_tcp",
+      "port": 389,
+      "priority": 10,
+      "weight": 5
+    },
+    {
+      "type": "FORWARD_DOMAIN",
+      "id": "00000000-0000-0000-0000-0000000000a7",
+      "enabled": true,
+      "metadata": {
+        "origin": "USER_DEFINED"
+      },
+      "domain": "corp.example.com",
+      "ipAddress": "198.51.100.53"
+    }
+  ]
+}

@@ -1,0 +1,19 @@
+{
+  "meta": {
+    "rc": "ok"
+  },
+  "data": [
+    {
+      "mac": "aa:bb:cc:00:10:01",
+      "name": "Garage Camera",
+      "sw_mac": "aa:bb:cc:00:00:01",
+      "sw_port": 2
+    },
+    {
+      "mac": "aa:bb:cc:00:10:02",
+      "hostname": "other",
+      "sw_mac": "aa:bb:cc:00:00:02",
+      "sw_port": 2
+    }
+  ]
+}

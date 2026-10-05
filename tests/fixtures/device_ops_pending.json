@@ -1,0 +1,23 @@
+{
+  "offset": 0,
+  "limit": 200,
+  "count": 1,
+  "totalCount": 1,
+  "data": [
+    {
+      "macAddress": "aa:bb:cc:00:00:99",
+      "ipAddress": "192.0.2.99",
+      "model": "U7 Pro",
+      "state": "PENDING_ADOPTION",
+      "supported": true,
+      "firmwareVersion": "8.0.0",
+      "firmwareUpdatable": true,
+      "features": [
+        "accessPoint"
+      ],
+      "adoptionTargetSiteIds": [
+        "00000000-0000-0000-0000-000000000001"
+      ]
+    }
+  ]
+}

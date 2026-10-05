@@ -1,0 +1,152 @@
+{
+  "data": [
+    {
+      "category": "CLIENT_DEVICES",
+      "event": "CLIENT_CONNECTED_WIRELESS",
+      "id": "000000000000000000000001",
+      "key": "CLIENT_CONNECTED_WIRELESS_2",
+      "message_raw": "{CLIENT} connected to {WLAN} on {DEVICE}. Connection Info: {WIFI_STATS}. IP: {IP}",
+      "parameters": {
+        "CLIENT": {
+          "device_fingerprint_id": 1,
+          "fingerprint_source": 0,
+          "id": "aa:bb:cc:00:00:01",
+          "ip": "192.0.2.50",
+          "name": "Office Laptop"
+        },
+        "CONSOLE_NAME": {
+          "id": "Example Console",
+          "name": "Example Console"
+        },
+        "DEVICE": {
+          "fingerprint_source": 0,
+          "id": "aa:bb:cc:00:00:10",
+          "ip": "192.0.2.10",
+          "model": "U7-Pro",
+          "model_name": "U7PRO",
+          "name": "Office AP",
+          "version": "8.0.0"
+        },
+        "IP": {
+          "name": "192.0.2.50"
+        },
+        "WIFI_STATS": {
+          "name": "Ch. 37 (6 GHz, 160 MHz), -60 dBm"
+        },
+        "WLAN": {
+          "id": "00000000000000000000aa01",
+          "name": "Example WiFi"
+        }
+      },
+      "severity": "LOW",
+      "show_on_dashboard": false,
+      "status": "NEW",
+      "subcategory": "MONITORING_WIFI",
+      "target": "CLIENT",
+      "timestamp": 1790000000000,
+      "title_raw": "WiFi Client Connected",
+      "type": "CLIENT_CONNECTION"
+    },
+    {
+      "category": "SECURITY",
+      "event": "THREAT_BLOCKED",
+      "id": "000000000000000000000002",
+      "key": "THREAT_BLOCKED_KNOWN_SOURCE_AND_DESTINATION_CLIENTS",
+      "message_raw": "A network intrusion attempt from {SRC_CLIENT} to {DST_CLIENT} has been detected and blocked.",
+      "parameters": {
+        "DST_CLIENT": {
+          "id": "aa:bb:cc:00:00:02",
+          "name": "Desktop PC"
+        },
+        "SRC_CLIENT": {
+          "id": "aa:bb:cc:00:00:03",
+          "name": "Smart TV"
+        },
+        "DEVICE": {
+          "id": "aa:bb:cc:00:00:20",
+          "ip": "192.0.2.1",
+          "model": "UDM-Pro",
+          "model_name": "UDMPRO",
+          "name": "Gateway",
+          "version": "5.0.0"
+        },
+        "INITIATOR_ID": {
+          "id": "000000000000000000000099"
+        }
+      },
+      "severity": "VERY_HIGH",
+      "show_on_dashboard": false,
+      "status": "NEW",
+      "subcategory": "SECURITY_INTRUSION_PREVENTION",
+      "target": "DEVICE",
+      "timestamp": 1789990000000,
+      "title_raw": "Threat Detected and Blocked",
+      "type": "THREAT_DETECTION_AND_PREVENTION"
+    },
+    {
+      "category": "INTERNET_AND_WAN",
+      "event": "NETWORK_FAILED_OVER_TO_BACKUP_WAN",
+      "id": "000000000000000000000003",
+      "key": "NETWORK_FAILED_OVER_TO_BACKUP_WAN_2",
+      "message_raw": "Internet connection {WAN_ID} on port {PORT} is down and {FAILOVER_WAN_ID} {FAILOVER_ISP_NAME} is now active.",
+      "parameters": {
+        "PORT": {
+          "id": "9",
+          "name": "9",
+          "not_actionable": true
+        },
+        "WAN_ID": {
+          "id": "WAN",
+          "name": "WAN1",
+          "not_actionable": true
+        },
+        "FAILOVER_WAN_ID": {
+          "id": "WAN2",
+          "name": "WAN2",
+          "not_actionable": true
+        },
+        "FAILOVER_WAN_SUBNET": {
+          "name": "198.51.100.0/24",
+          "not_actionable": true
+        },
+        "FAILOVER_ISP_NAME": {
+          "enclosed_with_brackets": true,
+          "name": "Example ISP",
+          "not_actionable": true
+        }
+      },
+      "severity": "HIGH",
+      "show_on_dashboard": true,
+      "status": "NEW",
+      "subcategory": "INTERNET_OUTAGE_AND_FAILOVER",
+      "target": "SITE",
+      "timestamp": 1789980000000,
+      "title_raw": "{FAILOVER_WAN_ID} Internet Failover Active",
+      "type": "BACKUP_CONNECTION_IN_USE"
+    },
+    {
+      "category": "AUDIT",
+      "event": "ADMIN_ACCESS",
+      "id": "000000000000000000000004",
+      "key": "ADMIN_ACCESS",
+      "message_raw": "{ADMIN} accessed the Network application from {UNKNOWN_PARAM}.",
+      "parameters": {
+        "ADMIN": {
+          "id": "00000000-0000-0000-0000-0000000000a1",
+          "name": "Example Admin"
+        }
+      },
+      "severity": "MEDIUM",
+      "show_on_dashboard": false,
+      "status": "NEW",
+      "subcategory": "SYSTEM_ADMIN",
+      "target": "ADMIN",
+      "timestamp": 1789970000000,
+      "title_raw": "Network Accessed",
+      "type": "ADMIN_ACCESS"
+    }
+  ],
+  "page_number": 0,
+  "total_element_count": 4,
+  "total_page_count": 1
+}
