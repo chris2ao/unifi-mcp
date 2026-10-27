@@ -10,7 +10,7 @@ An MCP server for UniFi Network and Protect, built on FastMCP and httpx. API-key
 
 ## What this is
 
-A 214-tool MCP server (8 always-loaded tools, 157 Network, 40 Protect and 9 optional Site Manager cloud tools, with everything loaded) for UniFi Network and Protect, with an opt-in set of read-only UniFi Site Manager (cloud) tools. Tools load on demand per product and per group, so the token budget stays small until you need a capability. The full per-tool list with tiers is in [docs/TOOLS.md](docs/TOOLS.md). All mutations require a two-step preview-confirm flow before any API call is made. Authentication for the Network and Protect tools uses the X-API-Key header with a local-console key. The optional cloud tools use a separate Site Manager key (see [Site Manager cloud tools](#site-manager-cloud-tools-optional)).
+A 217-tool MCP server (8 always-loaded tools, 160 Network, 40 Protect and 9 optional Site Manager cloud tools, with everything loaded) for UniFi Network and Protect, with an opt-in set of read-only UniFi Site Manager (cloud) tools. Tools load on demand per product and per group, so the token budget stays small until you need a capability. The full per-tool list with tiers is in [docs/TOOLS.md](docs/TOOLS.md). All mutations require a two-step preview-confirm flow before any API call is made. Authentication for the Network and Protect tools uses the X-API-Key header with a local-console key. The optional cloud tools use a separate Site Manager key (see [Site Manager cloud tools](#site-manager-cloud-tools-optional)).
 
 ## Table of Contents
 
@@ -179,7 +179,7 @@ For the Network and Protect tools, this server targets the Network application a
 flowchart LR
     CC[Claude Code session] -->|stdio| MCP[FastMCP server<br/>python -m unifi_mcp]
     MCP --> UT[8 utility tools<br/>always loaded]
-    UT -->|load_network_tools| NET[157 Network tools<br/>core 76, security 59, insights 22]
+    UT -->|load_network_tools| NET[160 Network tools<br/>core 76, security 62, insights 22]
     UT -->|load_protect_tools| PROT[40 Protect tools<br/>cameras 23, devices 8, security 9]
     UT -->|load_access_tools| ACC[Access tools<br/>0 on this console]
     UT -->|load_cloud_tools| CLD[9 Site Manager tools<br/>optional, read-only]
@@ -209,17 +209,17 @@ These 8 tools are always available from session start. They do not require a loa
 | `get_server_info` | Server version, loaded products and groups, console firmware versions and drift from the tested versions |
 | `get_mutation_log` | Audit log of confirmed Tier 2 changes in this session |
 
-### Network Tools (157, loaded via `load_network_tools`)
+### Network Tools (160, loaded via `load_network_tools`)
 
-Groups: `core` (76 tools), `security` (59), `insights` (22). The full per-tool list is in [docs/TOOLS.md](docs/TOOLS.md); parameters and return shapes are in [docs/API.md](docs/API.md).
+Groups: `core` (76 tools), `security` (62), `insights` (22). The full per-tool list is in [docs/TOOLS.md](docs/TOOLS.md); parameters and return shapes are in [docs/API.md](docs/API.md).
 
 | Category | Count | Tools |
 |---|---|---|
 | Devices | 16 | list, get, restart, adopt, forget, locate, RF scan, firmware upgrade, rename, stats, ports, uplinks, statistics, details (v1), pending devices, PoE port power cycle |
-| Clients | 12 | list active, get, block, unblock, reconnect, alias, list all (historical), usage history, recent clients, official-API client detail, authorize and unauthorize guest |
+| Clients | 12 | list active (with SSID and AP), get, block, unblock, reconnect, alias, list all (historical), usage history, recent clients, official-API client detail, authorize and unauthorize guest |
 | Networks/VLANs | 7 | list, get, create, update, delete, DHCP leases, references |
 | Legacy Firewall | 8 | list rules, create, update, delete, reorder, list groups, create group, delete group |
-| Zone-Based Firewall | 15 | zones, policies (v2 and official API), toggle, logging, ordering, reorder, custom zones |
+| Zone-Based Firewall | 18 | zones, policies (v2 with hit counters, and official API), create, update and delete with IP, network, port, protocol and connection-state matching, toggle, logging, ordering, reorder, custom zones |
 | DNS Policies | 5 | list, get, create, update, delete (A, AAAA, CNAME, MX, TXT, SRV, forward domain) |
 | Traffic Matching Lists | 5 | list, get, create, update, delete (IP and port lists) |
 | Traffic Rules | 6 | list, get, create, update, delete, toggle |
@@ -241,7 +241,7 @@ Groups: `core` (76 tools), `security` (59), `insights` (22). The full per-tool l
 | Backups | 3 | list, create, restore |
 | Webhooks | 3 | stubs, return PRODUCT_UNAVAILABLE (endpoint removed in Network 10.6) |
 | System | 5 | sysinfo, health, alarms, events, event counts |
-| **Total** | **157** | |
+| **Total** | **160** | |
 
 **Note on Traffic Flows:** The flow tools use the v2 query endpoint verified on Network 10.6.106. The console returns flows unordered and caps totals at 10,000, so results are a sample (sorted newest first) and the aggregate tools report `truncated`.
 
@@ -294,10 +294,10 @@ Rate limits (HTTP 429) surface as a `CONNECTION_ERROR` with `rate_limited: true`
 |---|---|
 | Startup (utility only) | 8 |
 | After `load_network_tools(groups=["core"])` | 84 |
-| After `load_network_tools` (all groups) | 165 |
-| After `load_protect_tools` (all groups) | 205 (on a console with Protect) |
-| After `load_access_tools` | 205 (no Access hardware on test console) |
-| After `load_cloud_tools` | 214 (with `UNIFI_CLOUD_API_KEY` set) |
+| After `load_network_tools` (all groups) | 168 |
+| After `load_protect_tools` (all groups) | 208 (on a console with Protect) |
+| After `load_access_tools` | 208 (no Access hardware on test console) |
+| After `load_cloud_tools` | 217 (with `UNIFI_CLOUD_API_KEY` set) |
 
 ### OpenAPI Coverage
 
@@ -328,9 +328,9 @@ sequenceDiagram
     User->>MCP: load_network_tools()
     MCP->>Probe: GET /proxy/network/api/s/default/stat/sysinfo
     Probe-->>MCP: 200 OK (product present)
-    MCP->>Tools: Import 29 modules, register 157 tools
+    MCP->>Tools: Import 31 modules, register 160 tools
     Tools-->>MCP: TOOLS lists collected
-    MCP-->>User: "Registered 157 network tools"
+    MCP-->>User: "Registered 160 network tools"
     Note over User,Tools: Subsequent calls are no-ops
 ```
 
@@ -350,7 +350,7 @@ If the probe returns a non-200 status (product absent, network unreachable, wron
 
 ```
 load_network_tools(groups=["core"])               # 76 tools
-load_network_tools(groups=["core", "security"])   # registers only the 59 new ones
+load_network_tools(groups=["core", "security"])   # registers only the 62 new ones
 load_network_tools(groups=["all"])                # everything not yet loaded
 ```
 
@@ -532,7 +532,7 @@ src/unifi_mcp/
   cloud_loader.py     # load_cloud_tools registration
   tools/
     _registry.py      # Auto-discovery, tool groups, per-product loading
-    network/          # 29 modules, 157 tools
+    network/          # 31 modules, 160 tools
     cloud/            # 9 Site Manager tools (loaded by load_cloud_tools)
     protect/          # 40 tools (2 stubs): cameras, controls, views, accessories, events, alarm
     access/           # Stubs, 0 tools on current console

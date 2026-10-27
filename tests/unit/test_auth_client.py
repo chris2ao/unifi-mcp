@@ -99,6 +99,44 @@ async def test_connection_error_raises(client):
 
 @respx.mock
 @pytest.mark.asyncio
+async def test_timeout_error_names_the_timeout(client):
+    """httpx timeouts often carry an empty message; the error must still say
+    the request timed out instead of a bare 'HTTP error: '."""
+    respx.post("https://192.168.1.1/proxy/network/api/s/default/cmd/backup").mock(
+        side_effect=httpx.ReadTimeout("")
+    )
+    with pytest.raises(UnifiError) as exc_info:
+        await client.post("/proxy/network/api/s/{site}/cmd/backup", json={"cmd": "backup"})
+    assert exc_info.value.category == ErrorCategory.CONNECTION_ERROR
+    assert "timed out" in exc_info.value.message
+    assert "ReadTimeout" in exc_info.value.message
+    assert "may still have completed" in exc_info.value.message
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_post_passes_per_request_timeout(client):
+    route = respx.post("https://192.168.1.1/proxy/network/api/s/default/cmd/backup").mock(
+        return_value=httpx.Response(200, json={"data": []})
+    )
+    await client.post("/proxy/network/api/s/{site}/cmd/backup", json={"cmd": "backup"}, timeout=150.0)
+    timeout = route.calls[0].request.extensions["timeout"]
+    assert timeout["read"] == 150.0
+    assert timeout["connect"] == 30.0  # an unreachable console still fails fast
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_post_without_timeout_uses_client_default(client):
+    route = respx.post("https://192.168.1.1/proxy/network/api/s/default/rest/networkconf").mock(
+        return_value=httpx.Response(200, json={"data": []})
+    )
+    await client.post("/proxy/network/api/s/{site}/rest/networkconf", json={})
+    assert route.calls[0].request.extensions["timeout"]["read"] == 30.0
+
+
+@respx.mock
+@pytest.mark.asyncio
 async def test_post_sends_json_body(client):
     route = respx.post("https://192.168.1.1/proxy/network/api/s/default/rest/networkconf").mock(
         return_value=httpx.Response(200, json={"data": [{"_id": "abc"}]})

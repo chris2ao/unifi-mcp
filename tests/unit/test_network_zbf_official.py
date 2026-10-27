@@ -169,6 +169,18 @@ async def test_toggle_confirm_puts_merged_body(mock_client):
 
 
 @respx.mock
+async def test_toggle_confirm_refuses_if_policy_changed_since_preview(mock_client):
+    current = load_fixture("zbf_policy_v1.json")
+    route = respx.get(f"{FW}/policies/{P1}").mock(return_value=httpx.Response(200, json=current))
+    put = respx.put(f"{FW}/policies/{P1}")
+    assert (await zo.toggle_zbf_policy(mock_client, P1, True))["preview"] is True
+    route.mock(return_value=httpx.Response(200, json=current | {"name": "renamed in the UI"}))
+    r = await zo.toggle_zbf_policy(mock_client, P1, True, confirm=True)
+    assert r["category"] == "CONFLICT"
+    assert not put.called
+
+
+@respx.mock
 async def test_toggle_empty_response_is_not_executed(mock_client):
     respx.get(f"{FW}/policies/{P1}").mock(
         return_value=httpx.Response(200, json=load_fixture("zbf_policy_v1.json")))

@@ -1,0 +1,42 @@
+[
+  {
+    "_id": "aaaaaaaaaaaaaaaaaaaa0001",
+    "action": "BLOCK",
+    "connection_state_type": "ALL",
+    "connection_states": [],
+    "destination": {
+      "matching_target": "ANY",
+      "port": "53",
+      "port_matching_type": "SPECIFIC",
+      "zone_id": "bbbbbbbbbbbbbbbbbbbb0002"
+    },
+    "enabled": true,
+    "hits": 305,
+    "index": 10004,
+    "ip_version": "BOTH",
+    "last_hit": 1792664816604,
+    "logging": true,
+    "name": "Block Default outbound DNS to internet",
+    "predefined": false,
+    "protocol": "tcp_udp",
+    "source": {
+      "ips": ["192.0.2.0/24"],
+      "matching_target": "IP",
+      "matching_target_type": "SPECIFIC",
+      "port_matching_type": "ANY",
+      "zone_id": "bbbbbbbbbbbbbbbbbbbb0001"
+    }
+  },
+  {
+    "_id": "aaaaaaaaaaaaaaaaaaaa0002",
+    "action": "ALLOW",
+    "destination": {"matching_target": "ANY", "zone_id": "bbbbbbbbbbbbbbbbbbbb0003"},
+    "enabled": true,
+    "index": 2147483647,
+    "logging": false,
+    "name": "Allow All Traffic",
+    "predefined": true,
+    "protocol": "all",
+    "source": {"matching_target": "ANY", "zone_id": "bbbbbbbbbbbbbbbbbbbb0001"}
+  }
+]

@@ -53,8 +53,21 @@ async def get_zbf_zone(client: UnifiClient, zone_id: str) -> dict:
     return _format_zone(z if isinstance(z, dict) else {})
 
 
+def _zone_id(p: dict, side: str) -> str:
+    # Live v2 records nest the zone under source/destination ("zone_id"); the flat
+    # "<side>_zone_id" key is kept as a fallback for older payloads.
+    nested = p.get(side)
+    zone = nested.get("zone_id") if isinstance(nested, dict) else None
+    return zone or p.get(f"{side}_zone_id", "")
+
+
 async def list_zbf_policies(client: UnifiClient) -> list[dict]:
-    """List all ZBF firewall policies."""
+    """List all ZBF firewall policies (v2 ids) with zones and hit counters.
+
+    hits and last_hit (epoch ms, None if never matched) count matches whether or
+    not syslog logging is on, so they are the way to observe a rule before
+    enforcing it.
+    """
     response = await client.get(
         "/proxy/network/v2/api/site/{site}/firewall-policies",
         cache_category="zbf", cache_ttl=30.0,
@@ -67,12 +80,16 @@ async def list_zbf_policies(client: UnifiClient) -> list[dict]:
         {
             "id": p.get("_id", ""),
             "name": p.get("name", ""),
-            "source_zone_id": p.get("source_zone_id", ""),
-            "destination_zone_id": p.get("destination_zone_id", ""),
+            "source_zone_id": _zone_id(p, "source"),
+            "destination_zone_id": _zone_id(p, "destination"),
             "action": p.get("action", ""),
             "protocol": p.get("protocol", "all"),
             "enabled": p.get("enabled", True),
             "index": p.get("index", 0),
+            "predefined": p.get("predefined", False),
+            "logging": p.get("logging", False),
+            "hits": p.get("hits", 0),
+            "last_hit": p.get("last_hit"),
         }
         for p in policies
     ]

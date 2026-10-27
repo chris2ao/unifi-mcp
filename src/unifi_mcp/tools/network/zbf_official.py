@@ -17,7 +17,10 @@ schema). Policy ordering is split into ``beforeSystemDefined`` and
 ``afterSystemDefined`` lists of user-defined policy ids per zone pair.
 """
 
+import hashlib
+import json
 import re
+import time
 
 from unifi_mcp.auth.client import UnifiClient
 from unifi_mcp.validation import validation_error
@@ -41,6 +44,13 @@ _PUT_FIELDS = (
     "ipProtocolScope", "connectionStateFilter", "ipsecFilter", "loggingEnabled",
     "schedule",
 )
+# Matches the default UNIFI_PREVIEW_TTL_SECONDS of the central preview guard.
+_PREVIEW_TTL_SECONDS = 600.0
+# Fingerprint of each policy as it was when a preview was shown, keyed by
+# (tool, policy_id). Confirm compares against it so a policy edited after its
+# preview (in the UI or by another call) is not changed blindly. In-process
+# state, like the central preview registry it complements.
+_previewed: dict[tuple[str, str], tuple[str, float]] = {}
 
 
 def _check_uuid(value, field: str) -> dict | None:
@@ -100,6 +110,36 @@ def _format_policy(p: dict, detail: bool = False) -> dict:
             "schedule": p.get("schedule"),
         })
     return out
+
+
+def _put_body(policy: dict) -> dict:
+    """The writable fields of a policy, without nulls (absent means "any" or "always")."""
+    return {k: policy[k] for k in _PUT_FIELDS if policy.get(k) is not None}
+
+
+def _fingerprint(policy: dict) -> str:
+    return hashlib.sha256(json.dumps(_put_body(policy), sort_keys=True).encode()).hexdigest()
+
+
+def _remember_preview(tool: str, policy_id: str, policy: dict) -> None:
+    now = time.monotonic()
+    for key in [k for k, (_, seen) in _previewed.items() if now - seen > _PREVIEW_TTL_SECONDS]:
+        del _previewed[key]
+    _previewed[(tool, policy_id)] = (_fingerprint(policy), now)
+
+
+def _changed_since_preview(tool: str, policy_id: str, policy: dict) -> dict | None:
+    """CONFLICT error when the policy differs from what this tool's preview showed."""
+    entry = _previewed.pop((tool, policy_id), None)
+    if entry is None or entry[0] == _fingerprint(policy):
+        return None
+    return {
+        "error": True, "category": "CONFLICT", "policy_id": policy_id,
+        "message": (
+            f"ZBF policy '{policy.get('name', policy_id)}' changed after it was previewed. "
+            "Preview again to see the current policy before confirming."
+        ),
+    }
 
 
 def _preview(action: str, message: str, impact: str | None = None, **params) -> dict:
@@ -192,6 +232,7 @@ async def toggle_zbf_policy(
     if not current:
         return _not_found("policy", policy_id)
     if not confirm:
+        _remember_preview("toggle_zbf_policy", policy_id, current)
         return _preview(
             "toggle_zbf_policy",
             f"Will set ZBF policy '{current.get('name', policy_id)}' enabled={enabled}. "
@@ -200,7 +241,9 @@ async def toggle_zbf_policy(
             policy_id=policy_id, name=current.get("name", ""),
             current_enabled=current.get("enabled"), enabled=enabled,
         )
-    body = {k: current[k] for k in _PUT_FIELDS if k in current} | {"enabled": enabled}
+    if err := _changed_since_preview("toggle_zbf_policy", policy_id, current):
+        return err
+    body = _put_body(current) | {"enabled": enabled}
     response = await client.put(f"{_BASE}/policies/{policy_id}", json=body)
     client.invalidate_cache(_CACHE)
     return _executed("toggle_zbf_policy", response, policy_id=policy_id, enabled=enabled)

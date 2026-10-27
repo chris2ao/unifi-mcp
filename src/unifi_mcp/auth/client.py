@@ -21,6 +21,8 @@ INTEGRATION_PAGE_SIZE_MAX = 1000
 # the cap, then surface RATE_LIMITED to the caller.
 RATE_LIMIT_RETRIES = 3
 RATE_LIMIT_MAX_WAIT_SECONDS = 5.0
+# Client-wide request timeout; slow commands pass a longer per-request timeout.
+DEFAULT_TIMEOUT_SECONDS = 30.0
 
 
 def _retry_wait_seconds(response: httpx.Response, attempt: int) -> float:
@@ -92,7 +94,7 @@ class UnifiClient:
             base_url=config.unifi_host,
             headers={"X-API-Key": config.unifi_api_key},
             verify=config.unifi_verify_ssl,
-            timeout=30.0,
+            timeout=DEFAULT_TIMEOUT_SECONDS,
         )
 
     async def get(
@@ -197,9 +199,13 @@ class UnifiClient:
                 endpoint=resolved,
             )
 
-    async def post(self, path: str, json: dict | None = None) -> dict:
-        """POST request."""
-        return await self._request("POST", await self._resolve_path(path), json=json)
+    async def post(
+        self, path: str, json: dict | None = None, timeout: float | None = None
+    ) -> dict:
+        """POST request. `timeout` (seconds) overrides the client default for slow commands."""
+        return await self._request(
+            "POST", await self._resolve_path(path), json=json, timeout=timeout
+        )
 
     async def put(self, path: str, json: dict | None = None) -> dict:
         """PUT request."""
@@ -284,10 +290,21 @@ class UnifiClient:
         path: str,
         json: dict | None = None,
         params: dict[str, Any] | None = None,
+        timeout: float | None = None,
     ) -> dict:
-        """Execute an HTTP request with error handling and discovery logging."""
+        """Execute an HTTP request with error handling and discovery logging.
+
+        `timeout` None keeps the client default (httpx treats None as "no limit").
+        """
+        request_timeout = (
+            httpx.USE_CLIENT_DEFAULT if timeout is None
+            # A longer wait for the reply, but an unreachable console still fails fast.
+            else httpx.Timeout(timeout, connect=DEFAULT_TIMEOUT_SECONDS)
+        )
         try:
-            response = await self._send(method, path, json=json, params=params)
+            response = await self._send(
+                method, path, json=json, params=params, timeout=request_timeout
+            )
 
             if response.status_code >= 400:
                 category = status_to_category(response.status_code)
@@ -319,6 +336,13 @@ class UnifiClient:
             )
         except UnifiError:
             raise
+        except httpx.TimeoutException as e:
+            raise UnifiError(
+                ErrorCategory.CONNECTION_ERROR,
+                f"{method} {path} timed out ({type(e).__name__}); "
+                "the request may still have completed on the console",
+                endpoint=path,
+            )
         except httpx.HTTPError as e:
             raise UnifiError(
                 ErrorCategory.CONNECTION_ERROR,
