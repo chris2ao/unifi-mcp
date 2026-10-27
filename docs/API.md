@@ -212,7 +212,7 @@ Module: `tools/network/clients.py`
 List all currently connected (active) clients.
 
 - **Parameters:** None
-- **Returns:** `list[dict]` with keys: id, mac, hostname, ip, name, network, is_wired, is_guest, uptime, uptime_human, tx_bytes, tx_human, rx_bytes, rx_human, signal, satisfaction, blocked
+- **Returns:** `list[dict]` with keys: id, mac, hostname, ip, name, network, is_wired, is_guest, essid, ap_mac, uptime, uptime_human, tx_bytes, tx_human, rx_bytes, rx_human, wired_tx_bytes, wired_rx_bytes, signal, satisfaction, blocked. `essid` (SSID) and `ap_mac` are empty strings for wired clients.
 
 ### get_client
 
@@ -417,7 +417,7 @@ Delete a firewall group.
 
 ---
 
-## Zone-Based Firewall (15 tools)
+## Zone-Based Firewall (18 tools)
 
 Module: `tools/network/zbf.py`
 
@@ -439,10 +439,12 @@ Get details for a specific ZBF zone.
 
 ### list_zbf_policies
 
-List all ZBF firewall policies.
+List all ZBF firewall policies (v2 ids) with zones and hit counters.
+
+`hits` and `last_hit` (epoch ms, `null` if never matched) count matches whether or not syslog logging is on, so they are the way to observe a rule before enforcing it. Match a policy created with `create_zbf_policy_v1` by name: no field links v2 ids to Integration UUIDs. Zone ids are v2 ids (read from the nested `source.zone_id` and `destination.zone_id`), not the Integration UUIDs from `list_zbf_zones`.
 
 - **Parameters:** None
-- **Returns:** `list[dict]` with keys: id, name, source_zone_id, destination_zone_id, action, protocol, enabled, index
+- **Returns:** `list[dict]` with keys: id, name, source_zone_id, destination_zone_id, action, protocol, enabled, index, predefined, logging, hits, last_hit
 
 ### create_zbf_policy **(Tier 2)**
 
@@ -493,7 +495,7 @@ Use this to get the policy ids needed by get_zbf_policy, toggle_zbf_policy, set_
 
 Enable or disable a ZBF policy by Integration UUID. Requires confirm=True after previewing.
 
-The PATCH endpoint only accepts loggingEnabled, so this reads the policy and sends the merged body with PUT. Disabling a policy can open or close traffic paths between zones immediately.
+The PATCH endpoint only accepts loggingEnabled, so this reads the policy and sends the merged body with PUT. Disabling a policy can open or close traffic paths between zones immediately. The confirm returns `CONFLICT` if the policy changed after the preview.
 
 - **Parameters:** `policy_id: str`, `enabled: bool`, `confirm: bool = False`
 - **Returns:** `dict`
@@ -523,6 +525,38 @@ Reorder user-defined ZBF policies for a zone pair. Requires confirm=True after p
 ordered_policy_ids is the complete desired order of policy UUIDs (from get_zbf_policy_order); it must contain exactly the current set. Without after_system_defined_ids the before/after-system-defined section sizes are kept; pass after_system_defined_ids to set that section explicitly (then ordered_policy_ids is the before-system-defined section).
 
 - **Parameters:** `source_zone_id: str`, `destination_zone_id: str`, `ordered_policy_ids: list[str]`, `after_system_defined_ids: list[str] | None = None`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### create_zbf_policy_v1 **(Tier 2)**
+
+Module: `tools/network/zbf_policies_official.py` (bodies built in `zbf_policy_filters.py`).
+
+Create a ZBF policy with IP, network, port, protocol and state matching. Requires confirm=True after previewing. The preview returns the exact request `body`.
+
+- `*_ips` entries are addresses (`192.0.2.10`), subnets with no host bits set (`192.0.2.0/24`) or ranges (`192.0.2.10-192.0.2.20`). Use `*_ips` or `*_network_ids` on a side, not both. Omitting all matchers on a side matches the whole zone.
+- `*_ports` entries are numbers or `"start-stop"` ranges and need `protocol` `tcp`, `udp` or `tcp_udp`.
+- `protocol`: `all` (default), `tcp_udp`, `tcp`, `udp`, `icmp` (`icmp` needs `ip_version="IPV4"`). `ip_version`: `IPV4`, `IPV4_AND_IPV6` (default), `IPV6`.
+- `connection_states`: any of `NEW`, `INVALID`, `ESTABLISHED`, `RELATED`; omit to match all. Use `["NEW", "INVALID"]` on blocks so replies to allowed traffic still flow.
+- `allow_return_traffic` only applies to `ALLOW` (passing it with `BLOCK` or `REJECT` is an error). IP entries must match `ip_version` when it is `IPV4` or `IPV6`. Duplicate entries are rejected. The preview adds a `warning` when an `ALLOW` rule matches all traffic between the two zones.
+- `logging_enabled` only feeds a remote syslog server; read `hits` from `list_zbf_policies` instead (match the policy by name, since v2 ids differ from Integration UUIDs).
+
+- **Parameters:** `name: str`, `source_zone_id: str`, `destination_zone_id: str`, `action: str = "ALLOW"`, `allow_return_traffic: bool = False`, `source_ips: list[str] | None = None`, `source_network_ids: list[str] | None = None`, `source_ports: list[int | str] | None = None`, `destination_ips: list[str] | None = None`, `destination_network_ids: list[str] | None = None`, `destination_ports: list[int | str] | None = None`, `protocol: str = "all"`, `ip_version: str = "IPV4_AND_IPV6"`, `connection_states: list[str] | None = None`, `logging_enabled: bool = False`, `enabled: bool = True`, `description: str | None = None`, `confirm: bool = False`
+- **Returns:** `dict` (preview with `body`, or `executed` with the console response)
+
+### update_zbf_policy_v1 **(Tier 2)**
+
+Change a user-defined ZBF policy by Integration UUID (GET, merge, PUT). Requires confirm=True after previewing.
+
+Only the arguments passed change. Each side merges by part: `*_ips` or `*_network_ids` replace the IP or network matcher, `*_ports` replace the port filter, and parts not passed are kept, so narrowing a rule never drops an existing filter. `*_zone_id` moves a side and keeps its filters. `clear_source_filters` / `clear_destination_filters` start that side from no filters (needed to replace filter types these tools cannot rebuild, such as MAC, region or exclusion lists). `protocol` must be passed when `ip_version` is. The observe-then-enforce flip is `action="BLOCK", connection_states=["NEW", "INVALID"]` (switching to BLOCK drops `allowReturnTraffic`); `clear_connection_states=True` matches all states again. The preview returns `changed_fields`, `before` and `after`; the confirm returns `CONFLICT` if the policy changed after the preview. Only policies with origin `USER_DEFINED` are changed.
+
+- **Parameters:** `policy_id: str`, `name`, `description`, `enabled`, `action`, `allow_return_traffic`, `source_zone_id`, `source_ips`, `source_network_ids`, `source_ports`, `destination_zone_id`, `destination_ips`, `destination_network_ids`, `destination_ports`, `protocol`, `ip_version`, `connection_states` (all optional, default `None`), `clear_source_filters: bool = False`, `clear_destination_filters: bool = False`, `clear_connection_states: bool = False`, `logging_enabled: bool | None = None`, `confirm: bool = False`
+- **Returns:** `dict`
+
+### delete_zbf_policy_v1 **(Tier 2)**
+
+Delete a user-defined ZBF policy by Integration UUID. Requires confirm=True after previewing. The preview names the policy; system-defined policies are refused.
+
+- **Parameters:** `policy_id: str`, `confirm: bool = False`
 - **Returns:** `dict`
 
 ### create_zbf_zone **(Tier 2)**

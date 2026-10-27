@@ -56,6 +56,9 @@ def _format_client(c: dict) -> dict:
         "network": c.get("network", ""),
         "is_wired": c.get("is_wired", False),
         "is_guest": c.get("is_guest", False),
+        # SSID and access point for Wi-Fi clients; empty for wired clients.
+        "essid": c.get("essid") or "",
+        "ap_mac": c.get("ap_mac") or "",
         "uptime": c.get("uptime", 0),
         "uptime_human": _format_uptime(c.get("uptime", 0)),
         "tx_bytes": c.get("tx_bytes", 0),

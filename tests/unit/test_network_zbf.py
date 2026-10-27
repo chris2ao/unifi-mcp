@@ -77,6 +77,42 @@ async def test_list_zbf_policies(mock_client):
 
 @respx.mock
 @pytest.mark.asyncio
+async def test_list_zbf_policies_reads_nested_v2_shape(mock_client):
+    """Live 10.6.106 v2 policies nest zone ids under source/destination and carry
+    hit counters; the flat source_zone_id keys do not exist."""
+    from unifi_mcp.tools.network.zbf import list_zbf_policies
+
+    respx.get("https://192.168.1.1/proxy/network/v2/api/site/default/firewall-policies").mock(
+        return_value=httpx.Response(200, json=load_fixture("zbf_policies_v2_live.json"))
+    )
+    result = await list_zbf_policies(mock_client)
+    block, allow_all = result
+    assert block["source_zone_id"] == "bbbbbbbbbbbbbbbbbbbb0001"
+    assert block["destination_zone_id"] == "bbbbbbbbbbbbbbbbbbbb0002"
+    assert block["hits"] == 305
+    assert block["last_hit"] == 1792664816604
+    assert block["logging"] is True
+    assert block["predefined"] is False
+    assert allow_all["hits"] == 0
+    assert allow_all["last_hit"] is None
+    assert allow_all["predefined"] is True
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_list_zbf_policies_tolerates_malformed_side(mock_client):
+    from unifi_mcp.tools.network.zbf import list_zbf_policies
+
+    respx.get("https://192.168.1.1/proxy/network/v2/api/site/default/firewall-policies").mock(
+        return_value=httpx.Response(200, json=[{"_id": "x", "name": "odd", "source": "ANY", "destination": None}])
+    )
+    result = await list_zbf_policies(mock_client)
+    assert result[0]["source_zone_id"] == ""
+    assert result[0]["destination_zone_id"] == ""
+
+
+@respx.mock
+@pytest.mark.asyncio
 async def test_create_zbf_policy_preview(mock_client):
     from unifi_mcp.tools.network.zbf import create_zbf_policy
 

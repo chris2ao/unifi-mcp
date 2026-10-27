@@ -14,15 +14,15 @@ Loaders register tools by group, for example `load_network_tools(groups=["core"]
 |---|---|---:|---:|---:|
 | Network | core | 76 | 53 | 23 |
 | Network | insights | 22 | 22 | 0 |
-| Network | security | 59 | 23 | 36 |
-| **Network** | **all** | **157** | **98** | **59** |
+| Network | security | 62 | 23 | 39 |
+| **Network** | **all** | **160** | **98** | **62** |
 | Protect | cameras | 23 | 18 | 5 |
 | Protect | devices | 8 | 5 | 3 |
 | Protect | security | 9 | 2 | 7 |
 | **Protect** | **all** | **40** | **25** | **15** |
 | Site Manager (cloud) | cloud | 9 | 9 | 0 |
 | **Site Manager (cloud)** | **all** | **9** | **9** | **0** |
-| **Total** | | **206** | **132** | **74** |
+| **Total** | | **209** | **132** | **77** |
 
 ## Network
 
@@ -186,7 +186,7 @@ Loaded by `load_network_tools`.
 | `delete_webhook` | 2 | Delete a webhook recipient. Currently unavailable via the API. |
 | `list_zbf_zones` | 1 | List all ZBF firewall zones. |
 | `get_zbf_zone` | 1 | Get details for a specific ZBF zone. |
-| `list_zbf_policies` | 1 | List all ZBF firewall policies. |
+| `list_zbf_policies` | 1 | List all ZBF firewall policies (v2 ids) with zones and hit counters. |
 | `create_zbf_policy` | 2 | Create a new ZBF firewall policy. Requires confirm=True after previewing. |
 | `update_zbf_policy` | 2 | Update an existing ZBF policy. Requires confirm=True after previewing. |
 | `delete_zbf_policy` | 2 | Delete a ZBF firewall policy. Requires confirm=True after previewing. |
@@ -196,6 +196,9 @@ Loaded by `load_network_tools`.
 | `set_zbf_policy_logging` | 2 | Turn syslog logging on or off for a ZBF policy (PATCH loggingEnabled). Requires confirm=True after previewing. |
 | `get_zbf_policy_order` | 1 | Get the user-defined policy order for one source/destination zone pair. |
 | `reorder_zbf_policies` | 2 | Reorder user-defined ZBF policies for a zone pair. Requires confirm=True after previewing. |
+| `create_zbf_policy_v1` | 2 | Create a ZBF policy with IP, network, port, protocol and state matching. Requires confirm=True after previewing. |
+| `update_zbf_policy_v1` | 2 | Change a user-defined ZBF policy by Integration UUID (GET, merge, PUT). Requires confirm=True after previewing. |
+| `delete_zbf_policy_v1` | 2 | Delete a user-defined ZBF policy by Integration UUID. Requires confirm=True after previewing. |
 | `create_zbf_zone` | 2 | Create a custom firewall zone with name and network_ids (network UUIDs or list_networks ids; may be empty). Requires confirm=True after previewing. |
 | `update_zbf_zone` | 2 | Rename a zone and/or replace its network_ids (GET-merge-PUT). Requires confirm=True after previewing. |
 | `delete_zbf_zone` | 2 | Delete a custom (user-defined) firewall zone by UUID. Requires confirm=True after previewing. |

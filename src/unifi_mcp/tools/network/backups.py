@@ -6,6 +6,9 @@ Uses V1 cmd API per the endpoint catalog:
 
 from unifi_mcp.auth.client import UnifiClient
 
+# Live UDM Pro (Network 10.6.106) took 40.6 s to build a backup on 2026-10-26.
+BACKUP_TIMEOUT_SECONDS = 180.0
+
 
 async def list_backups(client: UnifiClient) -> list[dict]:
     """List all available controller backups."""
@@ -24,10 +27,15 @@ async def list_backups(client: UnifiClient) -> list[dict]:
 
 
 async def create_backup(client: UnifiClient) -> dict:
-    """Create a new controller backup. Tier 1 (non-destructive read/export)."""
+    """Create a new controller backup. Tier 1 (non-destructive read/export).
+
+    The console builds the backup before replying, which takes about 40 s on a
+    UDM Pro, so this call waits up to BACKUP_TIMEOUT_SECONDS.
+    """
     response = await client.post(
         "/proxy/network/api/s/{site}/cmd/backup",
         json={"cmd": "backup"},
+        timeout=BACKUP_TIMEOUT_SECONDS,
     )
     return {"action": "create_backup", "response": response}
 

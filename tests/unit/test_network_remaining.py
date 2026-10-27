@@ -140,6 +140,24 @@ async def test_create_backup(mock_client):
 
 @respx.mock
 @pytest.mark.asyncio
+async def test_create_backup_allows_slow_console(mock_client):
+    """The console takes about 40 s to build a backup (live 2026-10-26), longer
+    than the 30 s client default, so create_backup must send its own timeout."""
+    from unifi_mcp.tools.network.backups import BACKUP_TIMEOUT_SECONDS, create_backup
+
+    route = respx.post(f"{BASE}/proxy/network/api/s/default/cmd/backup").mock(
+        return_value=httpx.Response(200, json={"meta": {"rc": "ok"}, "data": [
+            {"url": "/dl/backup/10.6.106.unf"}
+        ]})
+    )
+    await create_backup(mock_client)
+    timeout = route.calls[0].request.extensions["timeout"]
+    assert BACKUP_TIMEOUT_SECONDS >= 120
+    assert timeout["read"] == BACKUP_TIMEOUT_SECONDS
+
+
+@respx.mock
+@pytest.mark.asyncio
 async def test_restore_backup_preview(mock_client):
     from unifi_mcp.tools.network.backups import restore_backup
 

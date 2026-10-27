@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.9.0] - 2026-10-26
+
+Zone-based firewall policies with real matching: create, update and delete policies that match IPs, subnets, ranges, networks, ports, protocol and connection state, enough to build a segmented home network (IoT, cameras, services, guest) through MCP. Network goes from 157 tools to 160 (217 in total with everything loaded). Tested against UniFi Network 10.6.106; the new policy tools were verified live by creating, updating and deleting a disabled test policy.
+
+### Added
+
+- `create_zbf_policy_v1`, `update_zbf_policy_v1`, `delete_zbf_policy_v1` (group `security`, module `zbf_policies_official`, all Tier 2) on the official Integration API. Policies can match source and destination IPs, subnets, ranges, networks and ports, the protocol (all, TCP/UDP, TCP, UDP, ICMP), the IP version and the connection state. Update is GET-merge-PUT with a before/after preview and merges each side by part (IP or network matcher, ports), so narrowing a rule never drops a filter; `clear_*_filters` replaces a side explicitly. Confirm is refused with `CONFLICT` if the policy changed after its preview. Only `USER_DEFINED` policies are changed or deleted. Address family must match `ip_version`, duplicates are rejected, and the preview warns when an ALLOW rule matches all traffic between two zones. Bodies are built and validated in `zbf_policy_filters.py`, with shapes checked against live policies.
+- `list_clients` and `get_client` return `essid` (SSID) and `ap_mac` for Wi-Fi clients (empty for wired).
+- `list_zbf_policies` returns `predefined`, `logging`, `hits` and `last_hit`. Hit counters work without syslog, so they are how a rule is observed before it is enforced.
+- `UnifiClient.post` takes an optional per-request `timeout`.
+
+### Fixed
+
+- `create_backup`: the console takes about 40 s to build a backup, longer than the 30 s client timeout, so every call failed with an empty `HTTP error:` message. The command now waits up to 180 s.
+- Request timeouts now report `<METHOD> <path> timed out (<exception>)` and note that the request may still have completed, instead of a bare `HTTP error: `. A longer per-request timeout keeps the 30 s connect timeout.
+- `toggle_zbf_policy` re-read the policy at confirm time and could PUT a body that differed from the one previewed; it now returns `CONFLICT` when the policy changed after the preview, and no longer sends null fields.
+- `list_zbf_policies` returned empty `source_zone_id` and `destination_zone_id` for every policy: live v2 records nest them under `source.zone_id` and `destination.zone_id`.
+
 ## [0.8.0] - 2026-10-04
 
 Network insights, the remaining official Network endpoints, and an optional Site Manager (cloud) tool set. Network goes from 122 tools to 157, and 9 read-only cloud tools are added behind a new `load_cloud_tools` loader (8 always-loaded tools, 214 in total with everything loaded). Network OpenAPI coverage rises from 46.6% to 78.1% (57 of 73) and Site Manager coverage from 0% to 64.3% (9 of 14). Tested on UniFi Network 10.6.106 and UniFi Protect 7.2.105. The cloud tools were verified with mocked tests only.
@@ -271,6 +289,7 @@ This release was driven by a real-world incident on 2026-04-18 where an offline 
 - Lazy per-product tool loading to keep the initial tool list small.
 - Claude Code plugin bundle with installation guide, setup instructions, and API reference.
 
+[0.9.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.9.0
 [0.8.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.8.0
 [0.7.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.7.0
 [0.6.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.6.0

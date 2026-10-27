@@ -43,6 +43,10 @@ async def test_list_clients(mock_client):
     assert result[0]["ip"] == "192.168.1.100"
     assert "uptime_human" in result[0]
     assert "tx_human" in result[0]
+    assert result[0]["essid"] == "HomeWiFi"
+    assert result[0]["ap_mac"] == "aa:bb:cc:00:00:10"
+    assert result[2]["essid"] == ""  # wired clients have no SSID
+    assert result[2]["ap_mac"] == ""
 
 
 @respx.mock

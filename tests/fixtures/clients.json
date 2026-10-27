@@ -17,6 +17,7 @@
       "signal": -45,
       "satisfaction": 98,
       "essid": "HomeWiFi",
+      "ap_mac": "aa:bb:cc:00:00:10",
       "blocked": false
     },
     {
