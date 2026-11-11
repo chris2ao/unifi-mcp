@@ -12,17 +12,17 @@ Loaders register tools by group, for example `load_network_tools(groups=["core"]
 
 | Product | Group | Tools | Tier 1 | Tier 2 |
 |---|---|---:|---:|---:|
-| Network | core | 76 | 53 | 23 |
+| Network | core | 81 | 58 | 23 |
 | Network | insights | 22 | 22 | 0 |
 | Network | security | 62 | 23 | 39 |
-| **Network** | **all** | **160** | **98** | **62** |
+| **Network** | **all** | **165** | **103** | **62** |
 | Protect | cameras | 23 | 18 | 5 |
 | Protect | devices | 8 | 5 | 3 |
 | Protect | security | 9 | 2 | 7 |
 | **Protect** | **all** | **40** | **25** | **15** |
 | Site Manager (cloud) | cloud | 9 | 9 | 0 |
 | **Site Manager (cloud)** | **all** | **9** | **9** | **0** |
-| **Total** | | **209** | **132** | **77** |
+| **Total** | | **214** | **137** | **77** |
 
 ## Network
 
@@ -69,6 +69,11 @@ Loaded by `load_network_tools`.
 | `get_voucher` | 1 | Get one hotspot voucher by id (code, limits, guest usage, expiry). |
 | `delete_voucher` | 2 | Delete one hotspot voucher by id. Guests authorized by it lose access. Requires confirm=True after previewing. |
 | `delete_vouchers` | 2 | Delete every hotspot voucher matching a filter expression, such as expired.eq(true) or name.eq('hotel-guest'). |
+| `integration_list_sites` | 1 | List Network sites on the Integration API (id, internalReference, name). |
+| `integration_list_devices` | 1 | List adopted devices (APs, switches, gateways) on the Integration API. |
+| `integration_get_device` | 1 | Device detail on the Integration API, including per-radio channel and width. |
+| `integration_get_device_stats` | 1 | Latest device statistics on the Integration API: uptime, CPU, memory, uplink, per-radio TX retries. |
+| `integration_get_ap_radios` | 1 | Every access point with radio channel/width and live TX retry %, in one call (Wi-Fi triage). |
 | `list_wans` | 1 | List the site's WAN interfaces (id and name). Use to get a WAN id for other tools. |
 | `list_site_to_site_tunnels` | 1 | List site-to-site VPN tunnels (id, name, type IPSEC/OPENVPN/WIREGUARD, origin). |
 | `list_device_tags` | 1 | List device tags with the ids of the devices carrying each tag (used by WiFi broadcast filters). |
