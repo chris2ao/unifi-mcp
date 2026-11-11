@@ -431,3 +431,43 @@ async def test_probe_unknown_product_is_false(server, monkeypatch):
     monkeypatch.setattr(server, "client", fake)
     assert await server._probe_product("cloud") is False
     assert fake.paths == []
+
+
+# --- UNIFI_PRELOAD_GROUPS ---
+
+def _preload_config(groups):
+    from unifi_mcp.config import UnifiConfig
+
+    return UnifiConfig(unifi_host="https://192.0.2.1", unifi_api_key="test-key", unifi_preload_groups=groups)
+
+
+def test_preload_groups_config_parses_like_tool_groups():
+    from pydantic import ValidationError
+
+    config = _preload_config(" Network:Core, network:core,protect:cameras ")
+    assert config.unifi_preload_groups == "network:core,protect:cameras"
+    assert config.preload_groups() == {"network": ["core"], "protect": ["cameras"]}
+    assert _preload_config(None).preload_groups() == {}
+    with pytest.raises(ValidationError, match="UNIFI_PRELOAD_GROUPS entries must look like"):
+        _preload_config("core")
+
+
+async def test_preload_registers_groups_without_probing(server, isolated, monkeypatch):
+    monkeypatch.setattr(server, "config", _preload_config("network:security"))
+    assert server.preload_groups() == ["get_beta"]
+    assert await _tool_names(isolated.mcp) == {"get_beta"}
+    assert isolated.probes == []
+    # A later loader call adds the other groups.
+    message = await _fn(server.load_network_tools)(_ctx())
+    assert message.startswith("Registered 3 network tools")
+    assert await _tool_names(isolated.mcp) == {"get_alpha", "set_alpha", "get_beta", "get_gamma"}
+
+
+def test_preload_unknown_group_stops_startup(server, isolated, monkeypatch):
+    monkeypatch.setattr(server, "config", _preload_config("network:nope"))
+    with pytest.raises(SystemExit, match="Unknown network tool group"):
+        server.preload_groups()
+
+
+def test_preload_nothing_by_default(server, isolated):
+    assert server.preload_groups() == []

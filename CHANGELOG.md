@@ -9,7 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- `integration_list_sites`, `integration_list_devices`, `integration_get_device`, `integration_get_device_stats`, `integration_get_ap_radios` (group `core`, module `integration_devices`, all Tier 1) on the official Integration API: device detail with per-radio channel and width, latest device statistics with per-radio TX retries, and one-call access point radio triage. They work on UniFi OS Server installs where the legacy device paths hang or are missing.
+- `integration_list_sites`, `integration_list_devices`, `integration_get_device`, `integration_get_device_stats`, `integration_get_ap_radios` (new Network group `integration`, module `integration_devices`, all Tier 1) on the official Integration API: device detail with per-radio channel and width, latest device statistics with per-radio TX retries, and one-call access point radio triage. They work on UniFi OS Server installs where the legacy device paths hang or are missing.
+- `UNIFI_PRELOAD_GROUPS` (same format as `UNIFI_TOOL_GROUPS`) registers tool groups at startup without probing the console, for clients that cannot call the loaders, such as an agent whose tool allowlist excludes them. Unset preloads nothing; an unknown group stops startup.
 
 ### Fixed
 

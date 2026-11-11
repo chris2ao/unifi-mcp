@@ -8,7 +8,8 @@ Endpoints:
 
 On some UniFi OS Server installs the legacy `/proxy/network/api/s/{site}/...`
 device paths hang or are missing, while the Integration API answers. These
-tools give device, radio and statistics reads that work there.
+tools give device, radio and statistics reads that work there. They are their own
+group, so a client can preload just them (UNIFI_PRELOAD_GROUPS=network:integration).
 """
 
 import re
@@ -17,7 +18,7 @@ from typing import Any
 from unifi_mcp.auth.client import UnifiClient
 from unifi_mcp.errors import ErrorCategory, UnifiError
 
-GROUP = "core"
+GROUP = "integration"
 TIER2_TOOLS: dict[str, str] = {}
 
 SITES_PATH = "/proxy/network/integration/v1/sites"

@@ -50,7 +50,7 @@ def mock_devices(*devices):
 
 
 def test_module_declarations():
-    assert idev.GROUP == "core"
+    assert idev.GROUP == "integration"
     assert idev.TIER2_TOOLS == {}
     assert [t.__name__ for t in idev.TOOLS] == [
         "integration_list_sites", "integration_list_devices", "integration_get_device",

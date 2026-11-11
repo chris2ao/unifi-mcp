@@ -1114,7 +1114,7 @@ Module: `tools/network/site_insights.py` (group `insights`, all Tier 1, fail sof
 
 ## Integration API devices (5 tools)
 
-Module: `tools/network/integration_devices.py` (group `core`, all Tier 1, official Integration API). On some UniFi OS Server installs the legacy `/proxy/network/api/s/{site}/...` device paths hang or are missing; these reads work there.
+Module: `tools/network/integration_devices.py` (group `integration`, all Tier 1, official Integration API). On some UniFi OS Server installs the legacy `/proxy/network/api/s/{site}/...` device paths hang or are missing; these reads work there. A client that cannot call the loaders can register them at startup with `UNIFI_PRELOAD_GROUPS=network:integration`.
 
 | Tool | Parameters | Returns |
 |---|---|---|
