@@ -5,6 +5,17 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `integration_list_sites`, `integration_list_devices`, `integration_get_device`, `integration_get_device_stats`, `integration_get_ap_radios` (new Network group `integration`, module `integration_devices`, all Tier 1) on the official Integration API: device detail with per-radio channel and width, latest device statistics with per-radio TX retries, and one-call access point radio triage. They work on UniFi OS Server installs where the legacy device paths hang or are missing.
+- `UNIFI_PRELOAD_GROUPS` (same format as `UNIFI_TOOL_GROUPS`) registers tool groups at startup without probing the console, for clients that cannot call the loaders, such as an agent whose tool allowlist excludes them. Unset preloads nothing; an unknown group stops startup.
+
+### Fixed
+
+- The Network product probe used the legacy `/proxy/network/api/s/{site}/stat/sysinfo`, which hangs or is missing on some UniFi OS Server installs, so `load_network_tools` reported Network as not installed. It now probes `/proxy/network/integration/v1/info`, the endpoint `get_server_info` already uses for the version.
+
 ## [0.9.0] - 2026-10-26
 
 Zone-based firewall policies with real matching: create, update and delete policies that match IPs, subnets, ranges, networks, ports, protocol and connection state, enough to build a segmented home network (IoT, cameras, services, guest) through MCP. Network goes from 157 tools to 160 (217 in total with everything loaded). Tested against UniFi Network 10.6.106; the new policy tools were verified live by creating, updating and deleting a disabled test policy.

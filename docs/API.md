@@ -1112,6 +1112,22 @@ Module: `tools/network/site_insights.py` (group `insights`, all Tier 1, fail sof
 
 ---
 
+## Integration API devices (5 tools)
+
+Module: `tools/network/integration_devices.py` (group `integration`, all Tier 1, official Integration API). On some UniFi OS Server installs the legacy `/proxy/network/api/s/{site}/...` device paths hang or are missing; these reads work there. A client that cannot call the loaders can register them at startup with `UNIFI_PRELOAD_GROUPS=network:integration`.
+
+| Tool | Parameters | Returns |
+|---|---|---|
+| `integration_list_sites` | none | `list[dict]` id, internal_reference, name |
+| `integration_list_devices` | none | `list[dict]` id, name, model, mac, ip, state, firmware, features, interfaces (all pages) |
+| `integration_get_device` | `device_id: str \| None`, `mac: str \| None` (one of them) | `dict` with `radios` (frequencyGHz, channel, channelWidthMHz, wlanStandard); TX power is not exposed |
+| `integration_get_device_stats` | `device_id: str \| None`, `mac: str \| None` (one of them) | `dict` uptime, CPU, memory, load, uplink, per-radio `txRetriesPct` |
+| `integration_get_ap_radios` | none | `list[dict]` every access point with radio config and live statistics; a device that fails is listed with `error` |
+
+A `mac` is resolved through the device list; an unknown MAC is `NOT_FOUND`, a malformed one `VALIDATION_ERROR`.
+
+---
+
 ## Lookups (14 tools)
 
 Module: `tools/network/lookups.py` (group `core`, all Tier 1, official Integration API).

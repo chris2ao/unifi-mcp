@@ -291,12 +291,14 @@ async def _load_product(
 
 @mcp.tool()
 async def load_network_tools(ctx: Context, groups: list[str] | None = None) -> str:
-    """Load UniFi Network tools, optionally only some groups: core, security, insights.
+    """Load UniFi Network tools, optionally only some groups: core, security, insights, integration.
 
     core: system, devices, clients, networks, WiFi, topology, backups, hotspot,
     port profiles. security: firewall, zone-based firewall, MAC ACL, RADIUS,
     port forwarding, traffic rules, QoS, VPN, DNS policies. insights: DPI,
     traffic flows, routing, dashboards and other read-only reports.
+    integration: device, radio and statistics reads on the Integration API,
+    which work where the legacy device paths hang (UniFi OS Server).
     groups: e.g. ["core", "security"]; omit to use UNIFI_TOOL_GROUPS or load
     every group. Call again with more groups to add them (only new tools are
     registered). list_tool_groups shows the current groups and tool counts.
@@ -450,7 +452,32 @@ async def get_mutation_log() -> list[dict]:
 register_cloud_loader(mcp)
 
 
+def preload_groups() -> list[str]:
+    """Register UNIFI_PRELOAD_GROUPS before serving, without probing the console.
+
+    For clients that cannot call the loaders. A later loader call adds groups as
+    usual. An unknown group stops startup, like an invalid UNIFI_TOOL_GROUPS entry.
+    """
+    registered: list[str] = []
+    for product, groups in config.preload_groups().items():
+        modules = discover_tool_modules(product)
+        selected, error = resolve_groups(
+            product, groups, available_groups(modules), source="UNIFI_PRELOAD_GROUPS")
+        if error:
+            raise SystemExit(error)
+        merge_module_tiers(safety, modules)
+        new_tools = [
+            fn for fn in select_tools(modules, selected) if not registry.is_registered(fn.__name__)
+        ]
+        for tool_fn in new_tools:
+            mcp.tool()(_bind_client(tool_fn))
+        registry.record_load(product, selected, [fn.__name__ for fn in new_tools])
+        registered += [fn.__name__ for fn in new_tools]
+    return registered
+
+
 def main():
+    preload_groups()
     mcp.run(transport="stdio")
 
 

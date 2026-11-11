@@ -14,15 +14,16 @@ Loaders register tools by group, for example `load_network_tools(groups=["core"]
 |---|---|---:|---:|---:|
 | Network | core | 76 | 53 | 23 |
 | Network | insights | 22 | 22 | 0 |
+| Network | integration | 5 | 5 | 0 |
 | Network | security | 62 | 23 | 39 |
-| **Network** | **all** | **160** | **98** | **62** |
+| **Network** | **all** | **165** | **103** | **62** |
 | Protect | cameras | 23 | 18 | 5 |
 | Protect | devices | 8 | 5 | 3 |
 | Protect | security | 9 | 2 | 7 |
 | **Protect** | **all** | **40** | **25** | **15** |
 | Site Manager (cloud) | cloud | 9 | 9 | 0 |
 | **Site Manager (cloud)** | **all** | **9** | **9** | **0** |
-| **Total** | | **209** | **132** | **77** |
+| **Total** | | **214** | **137** | **77** |
 
 ## Network
 
@@ -135,6 +136,16 @@ Loaded by `load_network_tools`.
 | `filter_flows_by_client` | 1 | Find traffic flows to or from one client, by IP address or MAC address. |
 | `get_blocked_flows` | 1 | List flows the firewall or threat engine blocked, sorted newest first (a sample). |
 | `get_flow_summary` | 1 | Summarize traffic over the last `minutes` (1 to 10080, default 60). |
+
+### Network: integration
+
+| Tool | Tier | Description |
+|---|---|---|
+| `integration_list_sites` | 1 | List Network sites on the Integration API (id, internalReference, name). |
+| `integration_list_devices` | 1 | List adopted devices (APs, switches, gateways) on the Integration API. |
+| `integration_get_device` | 1 | Device detail on the Integration API, including per-radio channel and width. |
+| `integration_get_device_stats` | 1 | Latest device statistics on the Integration API: uptime, CPU, memory, uplink, per-radio TX retries. |
+| `integration_get_ap_radios` | 1 | Every access point with radio channel/width and live TX retry %, in one call (Wi-Fi triage). |
 
 ### Network: security
 

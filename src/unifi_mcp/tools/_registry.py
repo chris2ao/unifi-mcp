@@ -58,7 +58,9 @@ _DEFAULT_FALLBACK_GROUP = "core"
 
 # Probe endpoints to detect installed products
 PRODUCT_PROBES: dict[str, str] = {
-    "network": "/proxy/network/api/s/{site}/stat/sysinfo",
+    # The Integration API info endpoint: the legacy /api/s/{site}/stat/sysinfo
+    # hangs or is missing on some UniFi OS Server installs.
+    "network": "/proxy/network/integration/v1/info",
     "protect": "/proxy/protect/integration/v1/meta/info",
     "access": "/proxy/access/api/v2/bootstrap",
 }

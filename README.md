@@ -167,6 +167,7 @@ For the Network and Protect tools, this server targets the Network application a
 | `UNIFI_SITE` | No | `default` | UniFi site name |
 | `UNIFI_VERIFY_SSL` | No | `false` | SSL certificate verification. Set to `false` for self-signed console certs (the default for most installations) |
 | `UNIFI_TOOL_GROUPS` | No | unset (all groups) | Default tool groups for the loaders, comma separated, for example `network:core,network:security,protect:cameras`. A product that is not mentioned loads all of its groups |
+| `UNIFI_PRELOAD_GROUPS` | No | unset (none) | Tool groups registered at startup, same format as `UNIFI_TOOL_GROUPS`, for clients that cannot call the loaders (for example an agent whose tool allowlist excludes them). Registered without probing the console; an unknown group stops startup |
 | `UNIFI_PREVIEW_TTL_SECONDS` | No | `600` | How long a Tier 2 preview stays valid for the confirm call (1 to 86400) |
 | `UNIFI_CLOUD_API_KEY` | No | unset | Optional. UniFi Site Manager API key created at unifi.ui.com. Separate from `UNIFI_API_KEY`. Enables `load_cloud_tools` (read-only Site Manager v1) |
 | `UNIFI_CLOUD_BASE_URL` | No | `https://api.ui.com` | Optional. Site Manager base URL. Must be https on `ui.com` or a subdomain |
@@ -475,7 +476,7 @@ The console reports a Network or Protect major.minor version that differs from t
 
 **A loader says "Unknown ... tool group"**
 
-Group names are `core`, `security` and `insights` for Network, and `cameras`, `devices` and `security` for Protect. Call `list_tool_groups` for the current list. Check `UNIFI_TOOL_GROUPS` if the error appears without a `groups` argument.
+Group names are `core`, `security`, `insights` and `integration` for Network, and `cameras`, `devices` and `security` for Protect. Call `list_tool_groups` for the current list. Check `UNIFI_TOOL_GROUPS` if the error appears without a `groups` argument.
 
 **A confirm call returns `PREVIEW_REQUIRED`**
 
