@@ -107,7 +107,8 @@ _RECORDING_UNAVAILABLE = {
     "category": "PRODUCT_UNAVAILABLE",
     "message": (
         "Camera recording-mode control is not available through the Protect "
-        "Integration API (verified on Protect 7.2.105, spec v7.3.70). Camera "
+        "Integration API (verified on Protect 7.2.105 and 7.3.74; spec v7.4.96 "
+        "adds no such field). Camera "
         "PATCH /v1/cameras/{id} has no recording-mode field; it accepts only "
         "name, osdSettings, ledSettings, lcdMessage, micVolume, videoMode, "
         "hdrType and smartDetectSettings. Change recording mode in the Protect "

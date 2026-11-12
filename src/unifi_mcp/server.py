@@ -48,7 +48,7 @@ _MAX_LOGGED_MESSAGE = 300
 
 # Console application versions this server's tools were last verified against.
 # get_server_info reports drift when the console's major.minor differs.
-VERIFIED_VERSIONS: dict[str, str] = {"network": "10.6.106", "protect": "7.2.105"}
+VERIFIED_VERSIONS: dict[str, str] = {"network": "11.0.99", "protect": "7.3.74"}
 _VERSION_ENDPOINTS: dict[str, str] = {
     "network": "/proxy/network/integration/v1/info",
     "protect": "/proxy/protect/integration/v1/meta/info",

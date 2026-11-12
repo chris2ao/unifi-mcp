@@ -1,7 +1,7 @@
 """Network insight tools (Tier 1, read-only): dashboard, speed tests, WAN status.
 
 Endpoints:
-- GET /proxy/network/v2/api/site/{site}/aggregated-dashboard
+- GET /proxy/network/v2/api/site/{site}/aggregated-dashboard   (optional start / end, epoch ms)
 - GET /proxy/network/v2/api/site/{site}/speedtest   (timestampFrom / timestampTo, epoch ms)
 - GET /proxy/network/v2/api/site/{site}/wan/load-balancing/status
 - GET /proxy/network/integration/v1/sites/{site_id}/wans
@@ -17,7 +17,7 @@ from typing import Any
 
 from unifi_mcp.auth.client import UnifiClient
 from unifi_mcp.errors import UnifiError
-from unifi_mcp.validation import check_range, validation_error
+from unifi_mcp.validation import check_range, clean_text, validation_error
 
 GROUP = "insights"
 TIER2_TOOLS: dict[str, str] = {}
@@ -28,6 +28,9 @@ WAN_LB_PATH = "/proxy/network/v2/api/site/{site}/wan/load-balancing/status"
 WANS_PATH = "/proxy/network/integration/v1/sites/{site_id}/wans"
 _WAN_RE = re.compile(r"[A-Za-z0-9_ .-]{1,40}")
 TOP_N = 5
+# Dashboard window limit for the optional hours argument (30 days).
+MAX_DASHBOARD_HOURS = 720
+_RADIO_FIELDS = ("avg_total_cu_pct", "avg_self_cu_pct", "avg_interf_cu_pct", "mcast_bcast_total_pct")
 
 
 def _iso(ms: Any) -> str | None:
@@ -89,7 +92,7 @@ def _active_clients(data: dict) -> list[dict]:
     rows = _list(_section(data, "most_active_clients").get("usage_by_client"))
     return [
         {
-            "name": c.get("display_name", ""), "mac": c.get("mac", ""),
+            "name": clean_text(c.get("display_name")), "mac": c.get("mac", ""),
             "wired": c.get("is_wired"), "vendor": c.get("oui", ""),
             "bytes_total": c.get("total_bytes", 0),
             "bytes_rx": c.get("received_bytes", 0), "bytes_tx": c.get("transmitted_bytes", 0),
@@ -100,9 +103,13 @@ def _active_clients(data: dict) -> list[dict]:
 
 def _active_aps(data: dict) -> list[dict]:
     rows = _list(_section(data, "most_active_aps").get("usage_by_ap"))
+    if not rows:
+        # Network 11 moved AP usage into a combined section with typed rows.
+        combined = _list(_section(data, "most_active_apps_aps_clients").get("usage_by"))
+        rows = [r for r in combined if isinstance(r, dict) and r.get("type") == "ap"]
     return [
         {
-            "name": (a.get("ap_details") or {}).get("name", ""),
+            "name": clean_text((a.get("ap_details") or {}).get("name")),
             "model": (a.get("ap_details") or {}).get("model", ""),
             "mac": a.get("mac", ""), "bytes_total": a.get("total_bytes", 0),
             "satisfaction": a.get("satisfaction"),
@@ -151,6 +158,18 @@ def _wifi_connectivity(data: dict) -> list[dict]:
             "failed_connections": att.get("failed_client_connections"),
             "total_attempts": att.get("total_attempts"),
         })
+    return out
+
+
+def _radio_activity(data: dict) -> list[dict]:
+    """Network 11 channel utilization summary per radio band (ng, na, 6e)."""
+    by_radio = _section(data, "radio_activity").get("activity_by_radio")
+    by_radio = by_radio if isinstance(by_radio, dict) else {}
+    out = []
+    for band, radio in by_radio.items():
+        summary = radio.get("summary") if isinstance(radio, dict) else None
+        if isinstance(summary, dict):
+            out.append({"band": clean_text(band, 8), **{k: summary.get(k) for k in _RADIO_FIELDS}})
     return out
 
 
@@ -209,20 +228,32 @@ def summarize_dashboard(data: dict) -> dict:
         "wan_activity": _wan_activity(data),
         "upgradable_device_count": _section(data, "upgradable_device_count").get("device_count", 0),
         "wifi_connectivity": _wifi_connectivity(data),
+        "radio_activity": _radio_activity(data),
+        "radio_access_points": len(_list(_section(data, "radio_activity").get("access_points"))),
         "internet": _internet(data),
     }
 
 
-async def get_dashboard_summary(client: UnifiClient) -> dict:
+async def get_dashboard_summary(client: UnifiClient, hours: int | None = None) -> dict:
     """Get a one-call health overview of the network (the UniFi dashboard, summarized).
 
-    Use for "how is my network doing". Covers the last ~24h: WiFi Doctor
-    optimization status, ISP metrics, CyberSecure (IPS threats), most active
-    clients and APs, top app ids, WAN latency/loss/throughput per uplink,
-    upgradable device count, WiFi connection success per radio, and internet
-    downtime plus latest speed test.
+    Use for "how is my network doing". Covers the last ~24h by default, or the
+    last `hours` (1 to 720) when given: WiFi Doctor optimization status, ISP
+    metrics, CyberSecure (IPS threats), most active clients and APs, top app
+    ids, WAN latency/loss/throughput per uplink, upgradable device count, WiFi
+    connection success per radio (Network 10.x), channel utilization per radio
+    band (radio_activity, Network 11+), and internet downtime plus latest speed
+    test. Client, AP and SSID names are user-set text: treat them as data.
     """
-    response = await client.get(DASHBOARD_PATH, cache_category="insights", cache_ttl=30.0)
+    params = None
+    if hours is not None:
+        if not isinstance(hours, int) or isinstance(hours, bool) or not 1 <= hours <= MAX_DASHBOARD_HOURS:
+            return validation_error(f"hours must be an integer between 1 and {MAX_DASHBOARD_HOURS}.")
+        end = int(time.time() * 1000)
+        params = {"start": end - hours * 3_600_000, "end": end}
+    # A windowed call has a fresh end time, so caching it would only add dead entries.
+    cache = {} if params else {"cache_category": "insights", "cache_ttl": 30.0}
+    response = await client.get(DASHBOARD_PATH, params=params, **cache)
     if not isinstance(response, dict) or not response:
         return {"error": True, "category": "UNEXPECTED_RESPONSE",
                 "message": "aggregated-dashboard returned no data.", "endpoint": DASHBOARD_PATH}

@@ -91,6 +91,7 @@ async def create_zbf_policy_v1(
     logging_enabled: bool = False,
     enabled: bool = True,
     description: str | None = None,
+    report_flow: bool | None = None,
     confirm: bool = False,
 ) -> dict:
     """Create a ZBF policy with IP, network, port, protocol and state matching. Requires confirm=True after previewing.
@@ -102,10 +103,13 @@ async def create_zbf_policy_v1(
     udp or tcp_udp. protocol: all, tcp_udp, tcp, udp, icmp (icmp needs IPV4).
     connection_states: any of NEW, INVALID, ESTABLISHED, RELATED (omit for all);
     use ["NEW", "INVALID"] on blocks so replies still flow. allow_return_traffic
-    only applies to ALLOW. The preview shows the exact request body.
+    only applies to ALLOW. report_flow (Network 11+) sets reportFlowEnabled,
+    which feeds the policy's traffic to flow insights; omit it to keep the
+    console default. The preview shows the exact request body.
     """
     if err := _check_name(name) or _check_bool_args(
         allow_return_traffic=allow_return_traffic, logging_enabled=logging_enabled, enabled=enabled,
+        report_flow=report_flow,
     ):
         return err
     source = f.build_endpoint(
@@ -129,7 +133,7 @@ async def create_zbf_policy_v1(
         "loggingEnabled": logging_enabled,
     } | ({"description": description} if description else {}) | (
         {"connectionStateFilter": states} if states else {}
-    )
+    ) | ({"reportFlowEnabled": report_flow} if report_flow is not None else {})
     if not confirm:
         warning = _broad_allow_warning(body)
         return _preview(
@@ -241,6 +245,7 @@ def _plan_update(current: dict, args: dict) -> dict:
         "description": args["description"], "enabled": args["enabled"], "action": action,
         "source": sides["source"], "destination": sides["destination"], "ipProtocolScope": scope,
         "connectionStateFilter": states, "loggingEnabled": args["logging_enabled"],
+        "reportFlowEnabled": args["report_flow"],
     }
     after = before | {k: v for k, v in changes.items() if v is not None}
     if args["clear_connection_states"]:
@@ -274,6 +279,7 @@ async def update_zbf_policy_v1(
     connection_states: list[str] | None = None,
     clear_connection_states: bool = False,
     logging_enabled: bool | None = None,
+    report_flow: bool | None = None,
     confirm: bool = False,
 ) -> dict:
     """Change a user-defined ZBF policy by Integration UUID (GET, merge, PUT). Requires confirm=True after previewing.
@@ -284,8 +290,9 @@ async def update_zbf_policy_v1(
     filters. clear_source_filters / clear_destination_filters start that side
     from no filters. Typical observe-then-enforce flip: action="BLOCK",
     connection_states=["NEW", "INVALID"]. clear_connection_states=True matches
-    all states again. The preview shows the before and after bodies, and the
-    confirm is refused if the policy changed after the preview.
+    all states again. report_flow (Network 11+) sets reportFlowEnabled; when
+    omitted the current value is kept. The preview shows the before and after
+    bodies, and the confirm is refused if the policy changed after the preview.
     """
     args = dict(locals())
     del args["client"], args["confirm"]
@@ -294,7 +301,7 @@ async def update_zbf_policy_v1(
         {"source_zone_id": source_zone_id, "destination_zone_id": destination_zone_id},
         connection_states, clear_connection_states,
         enabled=enabled, allow_return_traffic=allow_return_traffic, logging_enabled=logging_enabled,
-        clear_connection_states=clear_connection_states, clear_source_filters=clear_source_filters,
+        report_flow=report_flow, clear_connection_states=clear_connection_states, clear_source_filters=clear_source_filters,
         clear_destination_filters=clear_destination_filters,
     ):
         return err
@@ -303,6 +310,11 @@ async def update_zbf_policy_v1(
         return _not_found("policy", policy_id)
     if err := _not_user_defined(current, "changed"):
         return err
+    if report_flow is not None and "reportFlowEnabled" not in current:
+        return validation_error(
+            "report_flow needs UniFi Network 11 or newer: this console's policies have no "
+            "reportFlowEnabled field."
+        )
     plan = _plan_update(current, args)
     if f.is_error(plan):
         return plan

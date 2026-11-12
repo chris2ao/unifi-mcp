@@ -135,7 +135,7 @@ async def test_set_camera_recording_mode_returns_product_unavailable(mock_client
     assert result["error"] is True
     assert result["category"] == "PRODUCT_UNAVAILABLE"
     assert "recording-mode" in result["message"]
-    assert "7.3.70" in result["message"]
+    assert "7.3.74" in result["message"] and "7.4.96" in result["message"]
     assert "smartDetectSettings" in result["message"]
 
 

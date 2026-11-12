@@ -36,7 +36,7 @@ def test_module_declarations():
 
     assert lookups.GROUP == "core"
     assert lookups.TIER2_TOOLS == {}
-    assert len(lookups.TOOLS) == 14
+    assert len(lookups.TOOLS) == 16
     import inspect
     for tool in lookups.TOOLS:
         assert "confirm" not in inspect.signature(tool).parameters

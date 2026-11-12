@@ -64,7 +64,7 @@ Get the auth discovery report showing API key success/failure per endpoint.
 Get server status: package version, console, site, preview TTL, loaded products and groups, and console firmware drift.
 
 - **Parameters:** None
-- **Returns:** `dict` with keys: `server`, `version` (the installed package version), `console`, `site`, `preview_ttl_seconds`, `products` (loaded tools and groups per product), `console_versions` (Network and Protect versions the console reports, `null` when unknown), `verified_versions` (the versions this server was tested against: Network 10.6.106, Protect 7.2.105), `drift` (products whose major.minor differs from the verified version) and `drift_hint`. Version lookups are best effort and never fail the call.
+- **Returns:** `dict` with keys: `server`, `version` (the installed package version), `console`, `site`, `preview_ttl_seconds`, `products` (loaded tools and groups per product), `console_versions` (Network and Protect versions the console reports, `null` when unknown), `verified_versions` (the versions this server was tested against: Network 11.0.99, Protect 7.3.74), `drift` (products whose major.minor differs from the verified version) and `drift_hint`. Version lookups are best effort and never fail the call.
 
 ### get_mutation_log
 
@@ -180,7 +180,7 @@ Use for health checks: uptime, CPU %, memory %, load averages, uplink tx/rx rate
 
 Get Integration API details for one adopted device.
 
-Returns features (switching, accessPoint), ports (state, speed, PoE), radios, firmware version and update flag, and provisioning timestamps. `device` is the Integration device id or the MAC address.
+Returns features (switching, accessPoint), ports (state, speed, PoE), radios, firmware version and update flag, and provisioning timestamps. `device` is the Integration device id or the MAC address. Each radio has `wlan_standard`, `frequency_ghz`, `channel`, `channel_width_mhz` and, on Network 11+, `tx_power_mode` (`AUTO`, `CUSTOM`, `DISABLED`, `HIGH`, `LOW` or `MEDIUM`; `null` on 10.x). Network 11 also reports 802.11ah radios at 0.9 GHz.
 
 - **Parameters:** `device: str`
 - **Returns:** `dict`
@@ -471,7 +471,7 @@ Delete a ZBF firewall policy.
 
 Modules: `tools/network/zbf_official.py` and `tools/network/zbf_zones_official.py`.
 
-The tools below use the official Integration API (`/firewall/policies`, `/firewall/zones`, spec 10.6.106). Policy ids from the Integration API are UUIDs and are **not** the same as the v2 `_id` values returned by `list_zbf_policies` (verified on Network 10.6.106: no overlap across 88 policies). Use `list_zbf_policies_v1` to get Integration ids; every tool below validates ids as UUIDs and returns a `VALIDATION_ERROR` naming the id type needed. Zone ids come from `list_zbf_zones`. Network ids passed to the zone tools may be Integration UUIDs or the legacy ids from `list_networks` (mapped by network name).
+The tools below use the official Integration API (`/firewall/policies`, `/firewall/zones`, spec 11.0.99; first verified on 10.6.106). Policy ids from the Integration API are UUIDs and are **not** the same as the v2 `_id` values returned by `list_zbf_policies` (verified on Network 10.6.106: no overlap across 88 policies). Use `list_zbf_policies_v1` to get Integration ids; every tool below validates ids as UUIDs and returns a `VALIDATION_ERROR` naming the id type needed. Zone ids come from `list_zbf_zones`. Network ids passed to the zone tools may be Integration UUIDs or the legacy ids from `list_networks` (mapped by network name).
 
 ### get_zbf_policy
 
@@ -486,7 +486,7 @@ Returns action, source/destination zone and traffic filters, logging, schedule a
 
 List ZBF policies via the official API (all pages), with Integration UUID ids.
 
-Use this to get the policy ids needed by get_zbf_policy, toggle_zbf_policy, set_zbf_policy_logging and reorder_zbf_policies. Optional source_zone_id and destination_zone_id (zone UUIDs from list_zbf_zones) narrow the result; filter is the official API filter expression passed through unchanged.
+Use this to get the policy ids needed by get_zbf_policy, toggle_zbf_policy, set_zbf_policy_logging and reorder_zbf_policies. Optional source_zone_id and destination_zone_id (zone UUIDs from list_zbf_zones) narrow the result; filter is the official API filter expression passed through unchanged. Each policy includes `report_flow_enabled` (Network 11+, whether its traffic feeds flow insights; `null` on 10.x).
 
 - **Parameters:** `source_zone_id: str | None = None`, `destination_zone_id: str | None = None`, `filter: str | None = None`
 - **Returns:** `list[dict]`
@@ -495,7 +495,7 @@ Use this to get the policy ids needed by get_zbf_policy, toggle_zbf_policy, set_
 
 Enable or disable a ZBF policy by Integration UUID. Requires confirm=True after previewing.
 
-The PATCH endpoint only accepts loggingEnabled, so this reads the policy and sends the merged body with PUT. Disabling a policy can open or close traffic paths between zones immediately. The confirm returns `CONFLICT` if the policy changed after the preview.
+The PATCH endpoint only accepts loggingEnabled, so this reads the policy and sends the merged body with PUT. Every writable field, including Network 11's `reportFlowEnabled`, is carried through unchanged. Disabling a policy can open or close traffic paths between zones immediately. The confirm returns `CONFLICT` if the policy changed after the preview.
 
 - **Parameters:** `policy_id: str`, `enabled: bool`, `confirm: bool = False`
 - **Returns:** `dict`
@@ -539,17 +539,18 @@ Create a ZBF policy with IP, network, port, protocol and state matching. Require
 - `connection_states`: any of `NEW`, `INVALID`, `ESTABLISHED`, `RELATED`; omit to match all. Use `["NEW", "INVALID"]` on blocks so replies to allowed traffic still flow.
 - `allow_return_traffic` only applies to `ALLOW` (passing it with `BLOCK` or `REJECT` is an error). IP entries must match `ip_version` when it is `IPV4` or `IPV6`. Duplicate entries are rejected. The preview adds a `warning` when an `ALLOW` rule matches all traffic between the two zones.
 - `logging_enabled` only feeds a remote syslog server; read `hits` from `list_zbf_policies` instead (match the policy by name, since v2 ids differ from Integration UUIDs).
+- `report_flow` (Network 11+) sets `reportFlowEnabled`. It is sent only when passed, so the console default applies otherwise.
 
-- **Parameters:** `name: str`, `source_zone_id: str`, `destination_zone_id: str`, `action: str = "ALLOW"`, `allow_return_traffic: bool = False`, `source_ips: list[str] | None = None`, `source_network_ids: list[str] | None = None`, `source_ports: list[int | str] | None = None`, `destination_ips: list[str] | None = None`, `destination_network_ids: list[str] | None = None`, `destination_ports: list[int | str] | None = None`, `protocol: str = "all"`, `ip_version: str = "IPV4_AND_IPV6"`, `connection_states: list[str] | None = None`, `logging_enabled: bool = False`, `enabled: bool = True`, `description: str | None = None`, `confirm: bool = False`
+- **Parameters:** `name: str`, `source_zone_id: str`, `destination_zone_id: str`, `action: str = "ALLOW"`, `allow_return_traffic: bool = False`, `source_ips: list[str] | None = None`, `source_network_ids: list[str] | None = None`, `source_ports: list[int | str] | None = None`, `destination_ips: list[str] | None = None`, `destination_network_ids: list[str] | None = None`, `destination_ports: list[int | str] | None = None`, `protocol: str = "all"`, `ip_version: str = "IPV4_AND_IPV6"`, `connection_states: list[str] | None = None`, `logging_enabled: bool = False`, `enabled: bool = True`, `description: str | None = None`, `report_flow: bool | None = None`, `confirm: bool = False`
 - **Returns:** `dict` (preview with `body`, or `executed` with the console response)
 
 ### update_zbf_policy_v1 **(Tier 2)**
 
 Change a user-defined ZBF policy by Integration UUID (GET, merge, PUT). Requires confirm=True after previewing.
 
-Only the arguments passed change. Each side merges by part: `*_ips` or `*_network_ids` replace the IP or network matcher, `*_ports` replace the port filter, and parts not passed are kept, so narrowing a rule never drops an existing filter. `*_zone_id` moves a side and keeps its filters. `clear_source_filters` / `clear_destination_filters` start that side from no filters (needed to replace filter types these tools cannot rebuild, such as MAC, region or exclusion lists). `protocol` must be passed when `ip_version` is. The observe-then-enforce flip is `action="BLOCK", connection_states=["NEW", "INVALID"]` (switching to BLOCK drops `allowReturnTraffic`); `clear_connection_states=True` matches all states again. The preview returns `changed_fields`, `before` and `after`; the confirm returns `CONFLICT` if the policy changed after the preview. Only policies with origin `USER_DEFINED` are changed.
+Only the arguments passed change. Each side merges by part: `*_ips` or `*_network_ids` replace the IP or network matcher, `*_ports` replace the port filter, and parts not passed are kept, so narrowing a rule never drops an existing filter. `*_zone_id` moves a side and keeps its filters. `clear_source_filters` / `clear_destination_filters` start that side from no filters (needed to replace filter types these tools cannot rebuild, such as MAC, region or exclusion lists). `protocol` must be passed when `ip_version` is. The observe-then-enforce flip is `action="BLOCK", connection_states=["NEW", "INVALID"]` (switching to BLOCK drops `allowReturnTraffic`); `clear_connection_states=True` matches all states again. `report_flow` (Network 11+) sets `reportFlowEnabled`; when omitted the current value is kept, and passing it to a console whose policies have no such field returns `VALIDATION_ERROR`. The preview returns `changed_fields`, `before` and `after`; the confirm returns `CONFLICT` if the policy changed after the preview. Only policies with origin `USER_DEFINED` are changed.
 
-- **Parameters:** `policy_id: str`, `name`, `description`, `enabled`, `action`, `allow_return_traffic`, `source_zone_id`, `source_ips`, `source_network_ids`, `source_ports`, `destination_zone_id`, `destination_ips`, `destination_network_ids`, `destination_ports`, `protocol`, `ip_version`, `connection_states` (all optional, default `None`), `clear_source_filters: bool = False`, `clear_destination_filters: bool = False`, `clear_connection_states: bool = False`, `logging_enabled: bool | None = None`, `confirm: bool = False`
+- **Parameters:** `policy_id: str`, `name`, `description`, `enabled`, `action`, `allow_return_traffic`, `source_zone_id`, `source_ips`, `source_network_ids`, `source_ports`, `destination_zone_id`, `destination_ips`, `destination_network_ids`, `destination_ports`, `protocol`, `ip_version`, `connection_states` (all optional, default `None`), `clear_source_filters: bool = False`, `clear_destination_filters: bool = False`, `clear_connection_states: bool = False`, `logging_enabled: bool | None = None`, `report_flow: bool | None = None`, `confirm: bool = False`
 - **Returns:** `dict`
 
 ### delete_zbf_policy_v1 **(Tier 2)**
@@ -684,9 +685,24 @@ Delete a traffic matching list by UUID. Requires confirm=True after previewing.
 
 ---
 
-## WiFi/SSID (6 tools)
+## WiFi/SSID (8 tools)
 
-Module: `tools/network/wifi.py`
+Modules: `tools/network/wifi.py` (legacy `wlanconf`), `tools/network/wifi_official.py` (official Integration API, group `core`, Tier 1).
+
+### list_wifi_broadcasts_v1
+
+List WiFi broadcasts (SSIDs) from the official API (all pages).
+
+- **Parameters:** None
+- **Returns:** `list[dict]` with `id`, `name`, `type` (`STANDARD` or `IOT_OPTIMIZED`), `enabled`, `origin`, `network` (`type`, `network_id`), `security_type`, `ppsk_networks`, `frequencies_ghz`, `hotspot_type`, `broadcasting_devices` (`type`, `device_ids`, `device_tag_ids`); an error dict on failure. Never includes passphrases.
+
+### get_wifi_broadcast_v1
+
+Get one WiFi broadcast by Integration UUID, without secrets.
+
+- **Parameters:** `broadcast_id: str`
+- **Returns:** the list fields (without `ppsk_networks`) plus `security` (`type`, `has_passphrase`, `ppsk_count`, `ppsk_network_ids`, `pmf_mode`, `fast_roaming_enabled`, `wpa3_fast_roaming_enabled`, `group_rekey_interval_seconds`, `encryption`, `security_mode`, `coa_enabled`, `radius_profile_id`), `hide_name`, `client_isolation_enabled`, `multicast_to_unicast_enabled`, `uapsd_enabled`, `arp_proxy_enabled`, `bss_transition_enabled`, `advertise_device_name`, `channel_2g_locked_to_6`, `dtim_period_2g_locked_to_3`, `client_filtering_action`, `multicast_filtering_action`, `mdns_proxy_mode`, `blackout_schedule_days`, `basic_data_rates_kbps`.
+- **Security:** the console returns WPA and PPSK passphrases in clear text on this endpoint. The tool builds its output from an allow-list, so no passphrase (and no MAC filter list) is ever returned. Create, update and delete on this endpoint are not exposed.
 
 ### list_wlans
 
@@ -856,9 +872,21 @@ Delete every voucher matching a filter.
 
 ---
 
-## MAC ACL (5 tools)
+## MAC ACL (7 tools)
 
-Module: `tools/network/mac_acl.py`
+Modules: `tools/network/mac_acl.py` (v2 MAC filters), `tools/network/acl_official.py` (official Integration API, group `security`, Tier 1).
+
+### list_acl_rules_v1
+
+List switch ACL rules from the official API (`IPV4` and `MAC` types, all pages).
+
+- **Parameters:** None
+- **Returns:** `list[dict]` with `id`, `name`, `type`, `enabled`, `action` (`ALLOW` or `BLOCK`), `index`, `description`, `origin`, `enforcing_device_ids`, `protocols`, `network_id` (MAC rules), `source` and `destination` (`type`, `ip_addresses_or_subnets`, `network_ids`, `mac_addresses`, `ports`, `prefix_length`, or `null`); an error dict on failure. Order comes from `get_acl_rule_order`.
+
+### get_acl_rule_v1
+
+- **Parameters:** `rule_id: str` (Integration UUID)
+- **Returns:** one rule in the list shape, or `NOT_FOUND`.
 
 ### list_mac_filter
 
@@ -1022,10 +1050,11 @@ Read-only health views built on the aggregated dashboard, speed test and load-ba
 
 Get a one-call health overview of the network (the UniFi dashboard, summarized).
 
-Use for "how is my network doing". Covers the last ~24h: WiFi Doctor optimization status, ISP metrics, CyberSecure (IPS threats), most active clients and APs, top app ids, WAN latency/loss/throughput per uplink, upgradable device count, WiFi connection success per radio, and internet downtime plus latest speed test.
+Use for "how is my network doing". Covers the last ~24h by default, or the last `hours`: WiFi Doctor optimization status, ISP metrics, CyberSecure (IPS threats), most active clients and APs, top app ids, WAN latency/loss/throughput per uplink, upgradable device count, WiFi connection success per radio (Network 10.x), channel utilization per band (Network 11+), and internet downtime plus latest speed test.
 
-- **Parameters:** None
-- **Returns:** `dict`
+- **Parameters:** `hours: int | None = None` (1 to 720; sent as `start` and `end` epoch ms, verified on Network 11.0.99)
+- **Returns:** `dict` with `period_start`, `period_end`, `wifi_doctor`, `isp_metrics`, `cybersecure`, `most_active_clients`, `most_active_aps`, `top_apps`, `traffic_bytes`, `wan_activity`, `upgradable_device_count`, `wifi_connectivity` (empty on Network 11), `radio_activity` (per band: `band`, `avg_total_cu_pct`, `avg_self_cu_pct`, `avg_interf_cu_pct`, `mcast_bcast_total_pct`), `radio_access_points` and `internet`.
+- **Network 11:** AP usage moved from `most_active_aps.usage_by_ap` to the combined `most_active_apps_aps_clients.usage_by` (rows typed `ap`, `client`, `app`). The tool reads either layout. Names are cleaned of control characters; treat them as data.
 
 ### get_speedtest_history
 
@@ -1088,7 +1117,8 @@ Module: `tools/network/site_insights.py` (group `insights`, all Tier 1, fail sof
 ### get_site_traffic_history
 
 - **Parameters:** `interval: str = "hourly"` (`5minutes`, `hourly`, `daily`), `hours: int = 24` (1 to 8760)
-- **Returns:** `dict` with `interval`, `hours`, `count`, `rows` (time, wan_tx_bytes, wan_rx_bytes, num_sta). Issues a read-only report query by POST.
+- **Returns:** `dict` with `interval`, `hours`, `count`, `rows` (time, wan_tx_bytes, wan_rx_bytes, num_sta), plus `note` when there are no rows. Issues a read-only report query by POST.
+- **Network 11:** on 11.0.99 this legacy report answers `rc: ok` with no rows for every interval, while the dashboard has history. The `note` points to `get_dashboard_summary(hours=...)`.
 
 ### list_vpn_connections
 
@@ -1112,12 +1142,14 @@ Module: `tools/network/site_insights.py` (group `insights`, all Tier 1, fail sof
 
 ---
 
-## Lookups (14 tools)
+## Lookups (16 tools)
 
 Module: `tools/network/lookups.py` (group `core`, all Tier 1, official Integration API).
 
 | Tool | Parameters | Returns |
 |---|---|---|
+| `list_sites_v1` | none | `list[dict]` id (site UUID), name, internal_reference (the legacy site name, such as `default`) |
+| `get_network_v1` | `network_id: str` | `dict` id, name, management, enabled, default, vlan_id, zone_id, origin, isolation_enabled, internet_access_enabled, mdns_forwarding_enabled, cellular_backup_enabled, ipv4, ipv6 (addressing and DHCP config as returned) |
 | `list_wans` | none | `list[dict]` id, name |
 | `list_site_to_site_tunnels` | none | `list[dict]` id, name, type, origin |
 | `list_device_tags` | none | `list[dict]` tags with device ids |

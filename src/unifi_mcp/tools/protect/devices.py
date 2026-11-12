@@ -51,7 +51,8 @@ _REBOOT_UNAVAILABLE = {
     "category": "PRODUCT_UNAVAILABLE",
     "message": (
         "Camera reboot is not available through the Protect Integration API "
-        "(verified on Protect 7.2.105, spec v7.3.70): there is no reboot "
+        "(verified on Protect 7.2.105 and 7.3.74, and absent from spec v7.4.96): "
+        "there is no reboot "
         "endpoint for cameras or NVRs. Reboot cameras from the Protect web or "
         "mobile UI."
     ),

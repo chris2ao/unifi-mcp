@@ -10,7 +10,7 @@ An MCP server for UniFi Network and Protect, built on FastMCP and httpx. API-key
 
 ## What this is
 
-A 217-tool MCP server (8 always-loaded tools, 160 Network, 40 Protect and 9 optional Site Manager cloud tools, with everything loaded) for UniFi Network and Protect, with an opt-in set of read-only UniFi Site Manager (cloud) tools. Tools load on demand per product and per group, so the token budget stays small until you need a capability. The full per-tool list with tiers is in [docs/TOOLS.md](docs/TOOLS.md). All mutations require a two-step preview-confirm flow before any API call is made. Authentication for the Network and Protect tools uses the X-API-Key header with a local-console key. The optional cloud tools use a separate Site Manager key (see [Site Manager cloud tools](#site-manager-cloud-tools-optional)).
+A 223-tool MCP server (8 always-loaded tools, 166 Network, 40 Protect and 9 optional Site Manager cloud tools, with everything loaded) for UniFi Network and Protect, with an opt-in set of read-only UniFi Site Manager (cloud) tools. Tools load on demand per product and per group, so the token budget stays small until you need a capability. The full per-tool list with tiers is in [docs/TOOLS.md](docs/TOOLS.md). All mutations require a two-step preview-confirm flow before any API call is made. Authentication for the Network and Protect tools uses the X-API-Key header with a local-console key. The optional cloud tools use a separate Site Manager key (see [Site Manager cloud tools](#site-manager-cloud-tools-optional)).
 
 ## Table of Contents
 
@@ -179,7 +179,7 @@ For the Network and Protect tools, this server targets the Network application a
 flowchart LR
     CC[Claude Code session] -->|stdio| MCP[FastMCP server<br/>python -m unifi_mcp]
     MCP --> UT[8 utility tools<br/>always loaded]
-    UT -->|load_network_tools| NET[160 Network tools<br/>core 76, security 62, insights 22]
+    UT -->|load_network_tools| NET[166 Network tools<br/>core 80, security 64, insights 22]
     UT -->|load_protect_tools| PROT[40 Protect tools<br/>cameras 23, devices 8, security 9]
     UT -->|load_access_tools| ACC[Access tools<br/>0 on this console]
     UT -->|load_cloud_tools| CLD[9 Site Manager tools<br/>optional, read-only]
@@ -209,45 +209,47 @@ These 8 tools are always available from session start. They do not require a loa
 | `get_server_info` | Server version, loaded products and groups, console firmware versions and drift from the tested versions |
 | `get_mutation_log` | Audit log of confirmed Tier 2 changes in this session |
 
-### Network Tools (160, loaded via `load_network_tools`)
+### Network Tools (166, loaded via `load_network_tools`)
 
-Groups: `core` (76 tools), `security` (62), `insights` (22). The full per-tool list is in [docs/TOOLS.md](docs/TOOLS.md); parameters and return shapes are in [docs/API.md](docs/API.md).
+Groups: `core` (80 tools), `security` (64), `insights` (22). The full per-tool list is in [docs/TOOLS.md](docs/TOOLS.md); parameters and return shapes are in [docs/API.md](docs/API.md).
 
 | Category | Count | Tools |
 |---|---|---|
 | Devices | 16 | list, get, restart, adopt, forget, locate, RF scan, firmware upgrade, rename, stats, ports, uplinks, statistics, details (v1), pending devices, PoE port power cycle |
 | Clients | 12 | list active (with SSID and AP), get, block, unblock, reconnect, alias, list all (historical), usage history, recent clients, official-API client detail, authorize and unauthorize guest |
-| Networks/VLANs | 7 | list, get, create, update, delete, DHCP leases, references |
+| Networks/VLANs | 8 | list, get, create, update, delete, DHCP leases, references, official-API network detail |
 | Legacy Firewall | 8 | list rules, create, update, delete, reorder, list groups, create group, delete group |
 | Zone-Based Firewall | 18 | zones, policies (v2 with hit counters, and official API), create, update and delete with IP, network, port, protocol and connection-state matching, toggle, logging, ordering, reorder, custom zones |
 | DNS Policies | 5 | list, get, create, update, delete (A, AAAA, CNAME, MX, TXT, SRV, forward domain) |
 | Traffic Matching Lists | 5 | list, get, create, update, delete (IP and port lists) |
 | Traffic Rules | 6 | list, get, create, update, delete, toggle |
-| WiFi/SSID | 6 | list, create, update, delete, stats, toggle |
+| WiFi/SSID | 8 | list, create, update, delete, stats, toggle, official-API broadcast list and detail (passphrases never returned) |
 | VPN | 2 | list servers, list clients |
 | Port Forwarding | 4 | list, create, update, delete |
 | DPI | 2 | site-wide stats, per-client breakdown |
 | Hotspot | 6 | list vouchers, create voucher, list vouchers (official API), get voucher, delete voucher, delete vouchers by filter |
-| MAC ACL | 5 | list filter rules, add filter, delete filter, get ACL rule order, reorder ACL rules |
+| MAC ACL | 7 | list filter rules, add filter, delete filter, get ACL rule order, reorder ACL rules, official-API ACL rule list and detail |
 | QoS | 2 | list rules, bandwidth profiles |
 | Topology | 3 | graph (nodes + edges), uplink tree, port table |
 | Traffic Flows | 6 | list flows, top talkers, filter by app, filter by client, blocked flows, flow summary |
 | Insights | 3 | dashboard summary, speed test history, WAN status |
 | Routing | 4 | routing table, static routes, traffic (policy) routes, NAT rules |
 | Site Insights | 7 | content filters, neighbor APs, site traffic history, VPN connections, scheduled tasks, dynamic DNS, site settings (secrets masked) |
-| Lookups | 14 | WANs, site-to-site tunnels, device tags, DPI applications and categories, countries, switch stacks, LAGs, multi-chassis LAG domains, RADIUS profiles and VPN servers (official API) |
+| Lookups | 15 | local sites, WANs, site-to-site tunnels, device tags, DPI applications and categories, countries, switch stacks, LAGs, multi-chassis LAG domains, RADIUS profiles and VPN servers (official API) |
 | RADIUS | 4 | list profiles, create, update, delete |
 | Port Profiles | 4 | list, create, update, delete (with PoE) |
 | Backups | 3 | list, create, restore |
 | Webhooks | 3 | stubs, return PRODUCT_UNAVAILABLE (endpoint removed in Network 10.6) |
 | System | 5 | sysinfo, health, alarms, events, event counts |
-| **Total** | **160** | |
+| **Total** | **166** | |
 
-**Note on Traffic Flows:** The flow tools use the v2 query endpoint verified on Network 10.6.106. The console returns flows unordered and caps totals at 10,000, so results are a sample (sorted newest first) and the aggregate tools report `truncated`.
+**Note on Traffic Flows:** The flow tools use the v2 query endpoint verified on Network 10.6.106 and 11.0.99. The console returns flows unordered and caps totals at 10,000, so results are a sample (sorted newest first) and the aggregate tools report `truncated`.
 
 **Note on internal endpoints:** The routing and site insight tools read legacy or v2 controller endpoints that have no public contract. They fail soft: a 404, auth error or unexpected shape returns an error dict naming the endpoint instead of raising. `get_site_settings` and `list_vpn_connections` mask secret-looking fields (names containing pass, secret, key, token, psk, community, signature, private, certificate or configuration, or starting with `x_`). Neighbor AP SSIDs come from anyone in radio range, so treat them as untrusted text.
 
 **Note on ZBF ids:** Integration API policy ids are UUIDs and differ from the v2 `_id` values returned by `list_zbf_policies`. Use `list_zbf_policies_v1` to get ids for the official ZBF tools.
+
+**Note on Network 11:** Network 11 adds `reportFlowEnabled` to firewall policies. The official ZBF tools report it as `report_flow_enabled`, keep it on every toggle and update, and accept `report_flow` on create and update. The dashboard moved AP usage into a combined section and added channel utilization per band; `get_dashboard_summary` reads both layouts, returns `radio_activity`, and takes an optional `hours` window (1 to 720). The legacy site report behind `get_site_traffic_history` returns no rows on Network 11.0.99, so that tool now says so and points to the dashboard. See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 ### Protect Tools (40, loaded via `load_protect_tools`)
 
@@ -264,7 +266,7 @@ Groups: `cameras` (23 tools), `devices` (8), `security` (9). The full per-tool l
 | Alarm Manager | 9 | list profiles, status, arm, disarm, set active profile, create, update, delete profile, trigger webhook |
 | **Total** | **40** | |
 
-**Stubs that remain.** `set_camera_recording_mode` and `reboot_camera` are registered and callable but return a `PRODUCT_UNAVAILABLE` error envelope. The Protect Integration API (Protect 7.2.105, spec 7.3.70) has no recording-mode field and no reboot endpoint, so there is nothing to call. They will be implemented when UniFi ships the endpoints.
+**Stubs that remain.** `set_camera_recording_mode` and `reboot_camera` are registered and callable but return a `PRODUCT_UNAVAILABLE` error envelope. The Protect Integration API (verified on Protect 7.2.105 and 7.3.74; also absent from the published spec 7.4.96) has no recording-mode field and no reboot endpoint, so there is nothing to call. They will be implemented when UniFi ships the endpoints.
 
 **PTZ is real.** `ptz_camera(camera_id, action, slot)` moves a PTZ camera to a saved preset (`goto`, slot -1 is home) or starts and stops a saved patrol. It is Tier 1. Free pan, tilt and zoom is not offered by the API.
 
@@ -293,21 +295,23 @@ Rate limits (HTTP 429) surface as a `CONNECTION_ERROR` with `rate_limited: true`
 | State | Tools in Context |
 |---|---|
 | Startup (utility only) | 8 |
-| After `load_network_tools(groups=["core"])` | 84 |
-| After `load_network_tools` (all groups) | 168 |
-| After `load_protect_tools` (all groups) | 208 (on a console with Protect) |
-| After `load_access_tools` | 208 (no Access hardware on test console) |
-| After `load_cloud_tools` | 217 (with `UNIFI_CLOUD_API_KEY` set) |
+| After `load_network_tools(groups=["core"])` | 88 |
+| After `load_network_tools` (all groups) | 174 |
+| After `load_protect_tools` (all groups) | 214 (on a console with Protect) |
+| After `load_access_tools` | 214 (no Access hardware on test console) |
+| After `load_cloud_tools` | 223 (with `UNIFI_CLOUD_API_KEY` set) |
 
 ### OpenAPI Coverage
 
-Official-endpoint coverage from `scripts/spec_coverage.py` against the vendored specs in `docs/specs/` (path match only, not HTTP method):
+Official-endpoint coverage from `scripts/spec_coverage.py` against the vendored specs in `docs/specs/`, counted by HTTP method and normalized path (an operation counts only when a tool calls that path with that method):
 
 | Spec | Version | Operations covered |
 |---|---|---|
-| UniFi Network Integration API | 10.6.106 | 78.1% (57 of 73) |
-| UniFi Protect Integration API | 7.3.70 | 40.5% (30 of 74) |
+| UniFi Network Integration API | 11.0.99 | 82.2% (60 of 73) |
+| UniFi Protect Integration API | 7.3.70 | 91.9% (68 of 74) |
 | UniFi Site Manager API | 1.0.0 | 64.3% (9 of 14, connector proxy not implemented) |
+
+v0.9.0 reported 78.1% Network and 40.5% Protect by path only. The method-aware count is stricter for Network (writes on networks, WiFi broadcasts and ACL rules are not counted, see [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md)) and higher for Protect, because the accessory tools build their paths from a list of device kinds that the old scanner could not see. Protect 7.4.96 is published but not installed on the test console; its additions are listed in the compatibility doc.
 
 Run `uv run python scripts/spec_diff.py` after a firmware upgrade to see what changed upstream. See [docs/SPEC_MAINTENANCE.md](docs/SPEC_MAINTENANCE.md).
 
@@ -328,9 +332,9 @@ sequenceDiagram
     User->>MCP: load_network_tools()
     MCP->>Probe: GET /proxy/network/api/s/default/stat/sysinfo
     Probe-->>MCP: 200 OK (product present)
-    MCP->>Tools: Import 31 modules, register 160 tools
+    MCP->>Tools: Import 32 modules, register 166 tools
     Tools-->>MCP: TOOLS lists collected
-    MCP-->>User: "Registered 160 network tools"
+    MCP-->>User: "Registered 166 network tools"
     Note over User,Tools: Subsequent calls are no-ops
 ```
 
@@ -455,7 +459,7 @@ The cloud tools need their own Site Manager key. Create one at unifi.ui.com (Set
 
 **`set_camera_recording_mode`, `reboot_camera`, or the webhook tools return PRODUCT_UNAVAILABLE**
 
-This is expected behavior on the tested firmware (Protect 7.2.105, Network 10.6.106). The Integration API does not expose these operations via API key. Use the Protect or Network web or mobile UI for these actions. The stubs will be implemented when UniFi ships the corresponding API endpoints. `ptz_camera`, `list_motion_events` and `list_smart_detections` are no longer stubs.
+This is expected behavior on the tested firmware (Protect 7.3.74, Network 11.0.99). The Integration API does not expose these operations via API key. Use the Protect or Network web or mobile UI for these actions. The stubs will be implemented when UniFi ships the corresponding API endpoints. `ptz_camera`, `list_motion_events` and `list_smart_detections` are no longer stubs.
 
 **`list_motion_events` or `watch_protect_events` returns no events**
 
@@ -471,7 +475,7 @@ The console toggles the output when no state is given, which can close an open g
 
 **`get_server_info` shows firmware `drift`**
 
-The console reports a Network or Protect major.minor version that differs from the version this release was tested against (Network 10.6.106, Protect 7.2.105). Tools may still work. If something misbehaves, run `uv run python scripts/spec_diff.py` to compare the console's API spec with the vendored one.
+The console reports a Network or Protect major.minor version that differs from the version this release was tested against (Network 11.0.99, Protect 7.3.74). Tools may still work. If something misbehaves, run `uv run python scripts/spec_diff.py` to compare the console's API spec with the vendored one.
 
 **A loader says "Unknown ... tool group"**
 
@@ -506,7 +510,7 @@ uv run pytest --cov
 uv run pytest -m integration
 ```
 
-Current status: 1438 tests passing, 19 skipped integration tests (22 skipped when UNIFI_HOST and UNIFI_API_KEY are unset).
+Current status: 1597 tests passing and 23 skipped (the 22 integration tests skip when UNIFI_HOST and UNIFI_API_KEY are unset), 97.5% line coverage.
 
 After changing tools, regenerate the tool list with `uv run python scripts/gen_tool_docs.py`. CI runs it with `--check` and fails when `docs/TOOLS.md` is stale.
 
@@ -532,29 +536,30 @@ src/unifi_mcp/
   cloud_loader.py     # load_cloud_tools registration
   tools/
     _registry.py      # Auto-discovery, tool groups, per-product loading
-    network/          # 31 modules, 160 tools
+    network/          # 32 modules, 166 tools
     cloud/            # 9 Site Manager tools (loaded by load_cloud_tools)
     protect/          # 40 tools (2 stubs): cameras, controls, views, accessories, events, alarm
     access/           # Stubs, 0 tools on current console
 scripts/
   spec_diff.py        # Diff live OpenAPI specs against docs/specs
-  spec_coverage.py    # Official-endpoint coverage report
+  spec_coverage.py    # Official-endpoint coverage by HTTP method and path
   gen_tool_docs.py    # Generates docs/TOOLS.md
 tests/
-  unit/               # 1438 tests, no console required
-  integration/        # 19 tests, require live console and env vars
+  unit/               # 1598 tests, no console required
+  integration/        # 22 tests, require live console and env vars
 docs/
   plans/              # Implementation plans, audit reports, design specs
   API.md              # Tool reference
   TOOLS.md            # Generated tool list (scripts/gen_tool_docs.py)
   SPEC_MAINTENANCE.md # Spec upgrade workflow
+  COMPATIBILITY.md    # Tested versions, feature/API matrix, gaps
   specs/              # Vendored OpenAPI specs
   SECURITY_REVIEW.md  # Security audit report
 ```
 
 **Runtime:** Python 3.12+, managed with uv. Entry point is `python -m unifi_mcp`.
 
-**Tested firmware:** UniFi Network 10.6.106, UniFi Protect 7.2.105 (UDM Pro). The Site Manager tools are verified with mocked tests only.
+**Tested firmware:** UniFi Network 11.0.99 and UniFi Protect 7.3.74 on UniFi OS 6.0.17 (UDM Pro), read-only live checks; earlier releases were verified on Network 10.6.106 and Protect 7.2.105. The Site Manager tools are verified with mocked tests only. Details and the feature matrix are in [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md).
 
 ---
 

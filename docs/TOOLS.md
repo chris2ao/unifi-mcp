@@ -12,17 +12,17 @@ Loaders register tools by group, for example `load_network_tools(groups=["core"]
 
 | Product | Group | Tools | Tier 1 | Tier 2 |
 |---|---|---:|---:|---:|
-| Network | core | 76 | 53 | 23 |
+| Network | core | 80 | 57 | 23 |
 | Network | insights | 22 | 22 | 0 |
-| Network | security | 62 | 23 | 39 |
-| **Network** | **all** | **160** | **98** | **62** |
+| Network | security | 64 | 25 | 39 |
+| **Network** | **all** | **166** | **104** | **62** |
 | Protect | cameras | 23 | 18 | 5 |
 | Protect | devices | 8 | 5 | 3 |
 | Protect | security | 9 | 2 | 7 |
 | **Protect** | **all** | **40** | **25** | **15** |
 | Site Manager (cloud) | cloud | 9 | 9 | 0 |
 | **Site Manager (cloud)** | **all** | **9** | **9** | **0** |
-| **Total** | | **209** | **132** | **77** |
+| **Total** | | **215** | **138** | **77** |
 
 ## Network
 
@@ -69,6 +69,8 @@ Loaded by `load_network_tools`.
 | `get_voucher` | 1 | Get one hotspot voucher by id (code, limits, guest usage, expiry). |
 | `delete_voucher` | 2 | Delete one hotspot voucher by id. Guests authorized by it lose access. Requires confirm=True after previewing. |
 | `delete_vouchers` | 2 | Delete every hotspot voucher matching a filter expression, such as expired.eq(true) or name.eq('hotel-guest'). |
+| `list_sites_v1` | 1 | List the console's local sites (id, name, internal_reference such as "default"). |
+| `get_network_v1` | 1 | Get one network's details from the official API by its Integration UUID. |
 | `list_wans` | 1 | List the site's WAN interfaces (id and name). Use to get a WAN id for other tools. |
 | `list_site_to_site_tunnels` | 1 | List site-to-site VPN tunnels (id, name, type IPSEC/OPENVPN/WIREGUARD, origin). |
 | `list_device_tags` | 1 | List device tags with the ids of the devices carrying each tag (used by WiFi broadcast filters). |
@@ -108,6 +110,8 @@ Loaded by `load_network_tools`.
 | `delete_wlan` | 2 | Delete a wireless network. Requires confirm=True after previewing. |
 | `get_wlan_stats` | 1 | Get per-SSID client statistics (aggregated from active clients). |
 | `toggle_wlan` | 2 | Enable or disable a wireless network. Requires confirm=True after previewing. |
+| `list_wifi_broadcasts_v1` | 1 | List WiFi broadcasts (SSIDs) from the official API. |
+| `get_wifi_broadcast_v1` | 1 | Get one WiFi broadcast's settings by Integration UUID, without secrets. |
 
 ### Network: insights
 
@@ -140,6 +144,8 @@ Loaded by `load_network_tools`.
 
 | Tool | Tier | Description |
 |---|---|---|
+| `list_acl_rules_v1` | 1 | List switch ACL rules from the official API (IPV4 and MAC types). |
+| `get_acl_rule_v1` | 1 | Get one ACL rule by Integration UUID (same fields as list_acl_rules_v1). |
 | `list_dns_policies` | 1 | List DNS policies (local DNS records and domain forwarders) on the gateway. |
 | `get_dns_policy` | 1 | Get one DNS policy by its UUID, including all type-specific fields and ttl. |
 | `create_dns_policy` | 2 | Create a DNS policy (local record or domain forwarder). Requires confirm=True after previewing. |

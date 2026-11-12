@@ -5,6 +5,40 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.10.0] - 2026-11-12
+
+UniFi Network 11 support. Tested against UniFi OS 6.0.17, Network 11.0.99 and Protect 7.3.74 on a UDM Pro with read-only live checks (77 of 79 no-argument read tools, and every new or changed tool, ran against the console with writes blocked). Network goes from 160 tools to 166 (223 in total with everything loaded). Coverage is now counted by HTTP method and path: Network 82.2% (60 of 73), Protect 91.9% (68 of 74), Site Manager 64.3% (9 of 14). See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the feature matrix, sources and gaps.
+
+### Added
+
+- Official Integration API reads (all Tier 1): `list_sites_v1` and `get_network_v1` (group `core`, module `lookups`), `list_wifi_broadcasts_v1` and `get_wifi_broadcast_v1` (group `core`, new module `wifi_official`), `list_acl_rules_v1` and `get_acl_rule_v1` (group `security`, new module `acl_official`).
+- `create_zbf_policy_v1` and `update_zbf_policy_v1` take `report_flow` (Network 11+) to set `reportFlowEnabled`. Update refuses it with `VALIDATION_ERROR` on a console whose policies have no such field.
+- `list_zbf_policies_v1` and `get_zbf_policy` return `report_flow_enabled` (`null` on Network 10.x).
+- `get_dashboard_summary(hours=...)` reads the last 1 to 720 hours (sent as `start` and `end`) and returns `radio_activity` (channel utilization per band) and `radio_access_points` on Network 11.
+- `get_device_details_v1` returns `tx_power_mode` for each radio.
+- `validation.clean_text` strips control characters from untrusted display text and caps its length. The new tools and the dashboard use it.
+- Vendored Network spec `docs/specs/network-11.0.99.json`, served by the console; it lists the same operations as the published 11.0.97. The Protect spec stays at 7.3.70, matching the installed 7.3 line.
+
+### Changed
+
+- `VERIFIED_VERSIONS` is now Network 11.0.99 and Protect 7.3.74, so `get_server_info` reports no drift on that firmware and reports drift on 10.x.
+- `scripts/spec_coverage.py` counts an operation only when the code calls its path with its HTTP method. It follows paths through local helpers, local variables, constants imported from other tool modules, module-level path maps and `websockets.connect`. It expands `{kind}`-style segments from module constants, and reports operationIds and the old path-only percentage. `src/unifi_mcp/server.py` is scanned too.
+- Protect stub messages (`set_camera_recording_mode`, `reboot_camera`) cite Protect 7.3.74 and the published spec 7.4.96, which still has no such endpoints.
+- Protect event subscriptions accept only the `events` and `devices` channels.
+
+### Fixed
+
+- `toggle_zbf_policy` and `update_zbf_policy_v1` rebuild the policy and send it with PUT. On Network 11 that body left out the new `reportFlowEnabled` field, so a toggle or edit could reset a policy's flow reporting. The field is now carried through, and it is part of the preview fingerprint, so a change after the preview is refused with `CONFLICT`.
+- `get_dashboard_summary` returned no APs on Network 11, because AP usage moved into the combined `most_active_apps_aps_clients` section. The tool now reads both layouts.
+- `get_site_traffic_history` returned an empty result with no explanation on Network 11. The legacy `stat/report` endpoint answers ok with no rows there, so the tool now adds a `note` that points to the dashboard.
+
+### Notes
+
+- Migration: no breaking changes. Tools and parameters are only added. The always-loaded tool count stays at 8.
+- Deferred, documented in the compatibility doc: official writes for networks, WiFi broadcasts, ACL rules, device restart, adoption and vouchers. These change live connectivity, could not be verified without changing the network, and existing legacy tools cover them. Also deferred are the Protect 7.4 additions (external arm profiles with arm and disarm, `subscribe/updates`, speaker `stop-siren`, the `antiFlicker` video mode), which need Protect 7.4.x.
+- Not verified live: every write tool, `report_flow` on create and update, and ACL rule detail (the test console has no ACL rules).
+- Upgrade: pull or update the plugin, then reconnect the `unifi` MCP server. Rollback: check out or reinstall tag `v0.9.0`. Nothing is stored on disk, so rolling back needs no data step.
+
 ## [0.9.0] - 2026-10-26
 
 Zone-based firewall policies with real matching: create, update and delete policies that match IPs, subnets, ranges, networks, ports, protocol and connection state, enough to build a segmented home network (IoT, cameras, services, guest) through MCP. Network goes from 157 tools to 160 (217 in total with everything loaded). Tested against UniFi Network 10.6.106; the new policy tools were verified live by creating, updating and deleting a disabled test policy.
