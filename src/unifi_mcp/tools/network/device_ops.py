@@ -156,6 +156,8 @@ def _format_device(d: dict) -> dict:
                 "frequency_ghz": r.get("frequencyGHz"),
                 "channel": r.get("channel"),
                 "channel_width_mhz": r.get("channelWidthMHz"),
+                # Network 11+: AUTO, CUSTOM, DISABLED, HIGH, LOW or MEDIUM (None on 10.x).
+                "tx_power_mode": r.get("txPowerMode"),
             }
             for r in interfaces.get("radios", []) or []
         ],

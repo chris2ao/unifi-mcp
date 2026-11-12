@@ -1,0 +1,42 @@
+{
+  "dashboard_meta": {"start_timestamp": 1794376800000, "end_timestamp": 1794462107897, "layout": "custom"},
+  "postgres_migration": {"timestamp": 1794458080253},
+  "most_active_aps": {"total_bytes": 9000},
+  "most_active_clients": {
+    "total_bytes": 4000,
+    "usage_by_client": [
+      {"display_name": "Laptop", "mac": "aa:bb:cc:00:00:10", "is_wired": false, "oui": "Example",
+       "total_bytes": 4000, "received_bytes": 3000, "transmitted_bytes": 1000, "satisfaction": 99}
+    ]
+  },
+  "most_active_apps_aps_clients": {
+    "usage_by": [
+      {"type": "app", "application": 5, "category": 13, "total_bytes": 7000},
+      {"type": "client", "display_name": "Laptop", "mac": "aa:bb:cc:00:00:10", "total_bytes": 4000},
+      {"type": "ap", "mac": "aa:bb:cc:00:00:01", "total_bytes": 5000, "received_bytes": 3000,
+       "transmitted_bytes": 2000, "satisfaction": 97,
+       "ap_details": {"name": "Office AP", "model": "U7PRO", "type": "uap"}},
+      "not-a-row"
+    ]
+  },
+  "radio_activity": {
+    "access_points": [
+      {"mac": "aa:bb:cc:00:00:01", "model": "U7PRO", "name": "Office AP"},
+      {"mac": "aa:bb:cc:00:00:02", "model": "UAPA6A5", "name": "Hall AP"}
+    ],
+    "activity_by_radio": {
+      "ng": {"history": [{"timestamp": 1794458400000}],
+             "summary": {"avg_total_cu_pct": 41.5, "avg_self_cu_pct": 10.0, "avg_interf_cu_pct": 31.5,
+                         "mcast_bcast_total_pct": 2.5, "mcast_bcast_rx_packets": 10}},
+      "na": {"history": [],
+             "summary": {"avg_total_cu_pct": 12.0, "avg_self_cu_pct": 8.0, "avg_interf_cu_pct": 4.0,
+                         "mcast_bcast_total_pct": 0.5}},
+      "bad": "not-a-dict"
+    },
+    "radio_bands": ["ng", "na", "6e"],
+    "total_activity": {}
+  },
+  "wifi_connectivity": {},
+  "wifi_doctor": {"actions": [{"id": "x", "optimization_status": "OPTIMIZED"}], "in_progress": false, "in_progress_in_site": false},
+  "upgradable_device_count": {"device_count": 0}
+}

@@ -194,6 +194,14 @@ async def list_neighbor_aps(
     return await fail_soft(ROGUE_AP_PATH, run)
 
 
+_EMPTY_REPORT_NOTE = (
+    "The controller returned no report rows. On UniFi Network 11 (verified on 11.0.99) this "
+    "legacy report endpoint answers ok with no rows for every interval, because statistics "
+    "moved to the new telemetry engine. Use get_dashboard_summary (optionally with hours) "
+    "for WAN activity and radio utilization history instead."
+)
+
+
 def _format_report_row(r: dict) -> dict:
     return {
         "time": r.get("time"),
@@ -213,7 +221,9 @@ async def get_site_traffic_history(
     back to look (1 to 8760, default 24; hourly rows at 8760 hours return up to
     8760 rows, so keep the window small); the controller retains finer
     intervals for a shorter time. Each row has time (epoch ms), wan_tx_bytes,
-    wan_rx_bytes, and num_sta. Read-only report query (POST).
+    wan_rx_bytes, and num_sta. Read-only report query (POST). On Network 11
+    the report is empty and the result carries a note pointing to
+    get_dashboard_summary.
     """
     if interval not in INTERVALS:
         return validation_error(f"interval must be one of {', '.join(INTERVALS)}")
@@ -226,7 +236,8 @@ async def get_site_traffic_history(
         body = {"attrs": list(REPORT_ATTRS), "start": end - hours * 3_600_000, "end": end}
         response = await client.post(path, json=body)
         rows = [_format_report_row(r) for r in extract_items(response)]
-        return {"interval": interval, "hours": hours, "count": len(rows), "rows": rows}
+        result = {"interval": interval, "hours": hours, "count": len(rows), "rows": rows}
+        return result | ({"note": _EMPTY_REPORT_NOTE} if not rows else {})
 
     return await fail_soft(path, run)
 

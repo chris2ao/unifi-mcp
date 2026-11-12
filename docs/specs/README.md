@@ -4,8 +4,8 @@ Snapshots of the official UniFi Integration API specs that unifi-mcp targets. Th
 
 | File | Service | Source |
 |------|---------|--------|
-| `network-10.6.106.json` | Network Integration API | Console: `GET /proxy/network/api-docs/integration.json` (also `https://developer.ui.com/network/v10.6.106/openapi.json`) |
-| `protect-7.3.70.json` | Protect Integration API | `https://developer.ui.com/protect/v7.3.70/openapi.json` |
+| `network-11.0.99.json` | Network Integration API | Console: `GET /proxy/network/api-docs/integration.json` on Network 11.0.99 (same operations as `https://developer.ui.com/network/v11.0.97/openapi.json`) |
+| `protect-7.3.70.json` | Protect Integration API | `https://developer.ui.com/protect/v7.3.70/openapi.json` (kept to match the installed Protect 7.3 line; 7.4.96 is published, see `docs/COMPATIBILITY.md`) |
 | `site-manager-1.0.0.json` | Site Manager (cloud) API | `https://developer.ui.com/site-manager/v1.0.0/openapi.json` |
 
 Sources:

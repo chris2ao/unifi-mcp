@@ -19,10 +19,10 @@ stdio channel
 uv run --directory <plugin-root> python -m unifi_mcp
     |
     v
-FastMCP server, 7 utility tools + lazy loaders (per product and per group)
+FastMCP server, 8 always-loaded tools (utilities + lazy loaders per product and group)
     |
     v (on load_* call)
-122 network tools / 11 protect tools
+166 network tools / 40 protect tools / 9 optional cloud tools
     |
     v (HTTPS with X-API-Key header)
 UniFi console at UNIFI_HOST
@@ -55,7 +55,7 @@ Then in the session:
 ```
 
 `get_server_info` should return `{"server": "chris2ao-unifi-mcp", ...}`.
-`load_network_tools` should register 122 tools (or 54 with `groups=["core"]`).
+`load_network_tools` should register 166 tools (or 80 with `groups=["core"]`).
 
 ## Files installed
 

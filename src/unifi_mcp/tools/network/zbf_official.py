@@ -1,6 +1,7 @@
 """Zone-Based Firewall tools built on the official Network Integration API.
 
-Base path: /proxy/network/integration/v1/sites/{site_id}/firewall (spec 10.6.106).
+Base path: /proxy/network/integration/v1/sites/{site_id}/firewall (spec 11.0.99;
+first written against 10.6.106).
 
 ID types (verified live on Network 10.6.106): Integration API policy ids are
 UUIDs and are NOT the same as the "_id" values returned by the v2
@@ -39,10 +40,12 @@ _UUID_RE = re.compile(
     r"^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
 )
 # Fields accepted by the "create or update firewall policy" PUT body.
+# reportFlowEnabled is new in Network 11 (spec 11.0.99). It must be carried
+# through every GET-merge-PUT, or a toggle or update could reset it.
 _PUT_FIELDS = (
     "enabled", "name", "description", "action", "source", "destination",
     "ipProtocolScope", "connectionStateFilter", "ipsecFilter", "loggingEnabled",
-    "schedule",
+    "reportFlowEnabled", "schedule",
 )
 # Matches the default UNIFI_PREVIEW_TTL_SECONDS of the central preview guard.
 _PREVIEW_TTL_SECONDS = 600.0
@@ -98,6 +101,8 @@ def _format_policy(p: dict, detail: bool = False) -> dict:
         "destination_zone_id": (p.get("destination") or {}).get("zoneId", ""),
         "ip_protocol_scope": p.get("ipProtocolScope"),
         "logging_enabled": p.get("loggingEnabled", False),
+        # Network 11+: whether the policy's traffic is reported to flow insights (None on 10.x).
+        "report_flow_enabled": p.get("reportFlowEnabled"),
         "origin": (p.get("metadata") or {}).get("origin", ""),
     }
     if detail:

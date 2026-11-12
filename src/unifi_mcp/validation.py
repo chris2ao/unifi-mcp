@@ -25,6 +25,17 @@ def validation_error(message: str) -> dict:
     return {"error": True, "category": "VALIDATION_ERROR", "message": message}
 
 
+def clean_text(value: Any, max_len: int = 128) -> str:
+    """Untrusted display text (names, SSIDs, descriptions): drop control characters and cap length.
+
+    Device names, SSIDs and rule descriptions are set by people or, for
+    neighbor networks, by anyone in radio range. Callers should still treat
+    the result as data, never as instructions.
+    """
+    text = "".join(ch for ch in str(value if value is not None else "") if ch.isprintable())
+    return text[:max_len]
+
+
 def check_id(value: Any, field: str = "id") -> dict | None:
     """Validate an identifier that may be interpolated into a URL path.
 

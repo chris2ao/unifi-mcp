@@ -30,7 +30,13 @@ MAX_EVENTS = 500
 _SMART_TYPES = ("smartDetectZone", "smartDetectLine", "smartDetectLoiterZone", "smartAudioDetect")
 
 
+# Subscription channels of the Protect Integration API (GET /v1/subscribe/{channel}).
+CHANNELS = ("events", "devices")
+
+
 def _ws_url(host: str, channel: str) -> str:
+    if channel not in CHANNELS:
+        raise ValueError(f"unknown Protect subscription channel: {channel!r}")
     parts = urlsplit(host if "://" in host else f"https://{host}")
     scheme = "ws" if parts.scheme == "http" else "wss"
     return f"{scheme}://{parts.netloc}{_BASE}/subscribe/{channel}"

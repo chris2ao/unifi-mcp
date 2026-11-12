@@ -285,10 +285,10 @@ async def test_list_tool_groups_default_is_all(server, isolated):
 # --- firmware drift ---
 
 @pytest.mark.parametrize("console, expected", [
-    ({"network": "10.6.106", "protect": "7.2.105"}, []),
-    ({"network": "10.6.200", "protect": "7.2.1"}, []),         # patch-level only
-    ({"network": "10.7.1", "protect": "7.2.105"}, ["network"]),
-    ({"network": "11.0.0", "protect": "7.3.70"}, ["network", "protect"]),
+    ({"network": "11.0.99", "protect": "7.3.74"}, []),
+    ({"network": "11.0.200", "protect": "7.3.1"}, []),          # patch-level only
+    ({"network": "11.1.1", "protect": "7.3.74"}, ["network"]),
+    ({"network": "10.6.106", "protect": "7.4.96"}, ["network", "protect"]),
     ({"network": None, "protect": None}, []),                 # unknown is not drift
     ({"network": "garbage", "protect": "v7.4.0"}, ["protect"]),
     ({}, []),
@@ -298,7 +298,7 @@ def test_firmware_drift(server, console, expected):
 
 
 def test_verified_versions_constant(server):
-    assert server.VERIFIED_VERSIONS == {"network": "10.6.106", "protect": "7.2.105"}
+    assert server.VERIFIED_VERSIONS == {"network": "11.0.99", "protect": "7.3.74"}
 
 
 class FakeVersionClient:
@@ -374,20 +374,20 @@ async def test_console_versions_are_cached_by_the_client(server, monkeypatch):
 
 async def test_get_server_info_reports_drift(server, monkeypatch):
     fake = FakeVersionClient({
-        NET_INFO: {"applicationVersion": "10.7.3"},
-        PROTECT_INFO: {"applicationVersion": "7.2.110"},
+        NET_INFO: {"applicationVersion": "11.1.3"},
+        PROTECT_INFO: {"applicationVersion": "7.3.80"},
     })
     monkeypatch.setattr(server, "client", fake)
     info = await _fn(server.get_server_info)()
-    assert info["console_versions"] == {"network": "10.7.3", "protect": "7.2.110"}
-    assert info["verified_versions"] == {"network": "10.6.106", "protect": "7.2.105"}
+    assert info["console_versions"] == {"network": "11.1.3", "protect": "7.3.80"}
+    assert info["verified_versions"] == {"network": "11.0.99", "protect": "7.3.74"}
     assert info["drift"] == ["network"]
     assert "scripts/spec_diff.py" in info["drift_hint"]
-    assert "10.7.3" in info["drift_hint"] and "10.6.106" in info["drift_hint"]
+    assert "11.1.3" in info["drift_hint"] and "11.0.99" in info["drift_hint"]
     for key in ("server", "version", "console", "site", "preview_ttl_seconds", "products"):
         assert key in info
     info["verified_versions"]["network"] = "0.0.0"
-    assert server.VERIFIED_VERSIONS["network"] == "10.6.106"
+    assert server.VERIFIED_VERSIONS["network"] == "11.0.99"
 
 
 async def test_get_server_info_survives_unreachable_console(server, monkeypatch):

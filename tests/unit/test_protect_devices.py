@@ -74,7 +74,7 @@ async def test_reboot_camera_returns_product_unavailable(mock_client):
     assert result["error"] is True
     assert result["category"] == "PRODUCT_UNAVAILABLE"
     assert "reboot" in result["message"].lower()
-    assert "7.2.105" in result["message"] and "7.3.70" in result["message"]
+    assert "7.3.74" in result["message"] and "7.4.96" in result["message"]
 
 
 @pytest.mark.asyncio

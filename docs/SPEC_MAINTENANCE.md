@@ -44,7 +44,16 @@ uv run python scripts/spec_coverage.py
 uv run python scripts/spec_coverage.py --check-min 60
 ```
 
-Lists every operation in each vendored spec and whether any string literal under `src/unifi_mcp/tools` references its path. Top-level string constants such as `_BASE = "/proxy/network/integration/..."` are substituted into f-strings and `+` concatenations, so paths built from a module constant are found. Path params are normalized (`{siteId}`, `{site_id}` and `{id}` all match), query strings are ignored, and the `/proxy/network/integration` and `/proxy/protect/integration` prefixes are stripped. Matching is by path only, not HTTP method, so a covered path may still lack some of its methods. The report ends each section with a percentage; `--check-min N` exits 1 if any spec is below N percent.
+Lists every operation in each vendored spec (with its operationId) and whether the source calls its path with its HTTP method. The scan covers `src/unifi_mcp/tools` and `src/unifi_mcp/server.py` (for `GET /v1/info`).
+
+How a call is resolved:
+
+- Only calls on an object whose name contains `client` count (`get`, `get_all_pages`, `get_binary`, `get_paginated`, `post`, `put`, `patch`, `delete`), plus `websockets.connect`, which counts as GET. `dict.get` is never mistaken for a request.
+- The path can be a literal, an f-string, a `+` concatenation, a module constant (`_BASE = "/proxy/network/integration/..."`), a constant imported from another tool module, a local variable, or a module-level dict or tuple of paths.
+- A path handed to a local helper takes the helper's methods; a path built by a helper takes its callers' methods. These indirect cases can overcount when one function calls one path with several methods.
+- A templated segment such as `{kind}` is expanded from a module constant named `KINDS` (or `KIND`), so the Protect accessory routes count per device kind. The template itself is kept, so it still matches a real `{id}` segment.
+
+Path params are normalized (`{siteId}`, `{site_id}` and `{id}` all match), query strings are ignored, and the `/proxy/network/integration` and `/proxy/protect/integration` prefixes are stripped. Each section reports the method-aware percentage and, for comparison with reports before v0.10.0, the path-only percentage. `--check-min N` exits 1 if any spec is below N percent (method-aware).
 
 ## Tool documentation
 

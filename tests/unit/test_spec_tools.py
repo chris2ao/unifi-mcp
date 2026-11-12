@@ -288,7 +288,7 @@ def test_collect_tool_literals(tmp_path):
     literals = spec_coverage.collect_tool_literals(tmp_path)
     assert "/proxy/protect/integration/v1/cameras" in literals
     assert "not a path" not in literals
-    assert any(x.endswith("/widgets/{}") for x in literals)
+    assert any(spec_coverage.normalize_path(x).endswith("/widgets/{}") for x in literals)
 
 
 def test_compute_coverage_by_service_prefix():
@@ -309,14 +309,21 @@ def test_load_reports_and_check_min(tmp_path, monkeypatch, capsys):
     shutil.copy(FIXTURES / "tiny-old.json", specs / "network-1.0.0.json")
     tools = tmp_path / "tools"
     tools.mkdir()
-    (tools / "m.py").write_text('P = "/proxy/network/integration/v1/sites/{site_id}/widgets"\n')
-    reports = spec_coverage.load_reports(specs, tools)
-    assert len(reports) == 1 and reports[0]["percent"] == 66.7
+    (tools / "m.py").write_text(
+        'P = "/proxy/network/integration/v1/sites/{site_id}/widgets"\n'
+        'async def list_widgets(client):\n'
+        '    return await client.get(P)\n'
+    )
+    reports = spec_coverage.load_reports(specs, tools, extra_files=())
+    assert len(reports) == 1 and reports[0]["percent"] == 33.3
+    assert reports[0]["path_percent"] == 66.7
 
     monkeypatch.setattr(spec_coverage, "load_reports", lambda: reports)
     assert spec_coverage.main([]) == 0
-    assert "| GET | `/v1/sites/{siteId}/widgets` | yes |" in capsys.readouterr().out
-    assert spec_coverage.main(["--check-min", "50"]) == 0
+    out = capsys.readouterr().out
+    assert "| GET | `/v1/sites/{siteId}/widgets` |  | yes |" in out
+    assert "| POST | `/v1/sites/{siteId}/widgets` |  | no |" in out
+    assert spec_coverage.main(["--check-min", "30"]) == 0
     assert spec_coverage.main(["--check-min", "90"]) == 1
     assert "FAIL" in capsys.readouterr().err
 
@@ -473,6 +480,98 @@ def test_collect_tool_literals_resolves_module_constants(tmp_path):
         '    return await c.get(_BASE)\n'
     )
     literals = spec_coverage.collect_tool_literals(tmp_path)
-    assert "/proxy/network/integration/v1/sites/{site_id}/policies/{}" in literals
+    assert "/proxy/network/integration/v1/sites/{site_id}/policies/{pid}" in literals
     assert "/proxy/network/integration/v1/sites/{site_id}/policies/ordering" in literals
     assert "/proxy/network/integration/v1/sites/{site_id}/policies" in literals
+
+
+# ------------------------------------------------- method-aware coverage
+
+_MOD = (
+    '_ROOT = "/proxy/network/integration/v1/sites/{site_id}"\n'
+    '_W = _ROOT + "/widgets"\n'
+    'KINDS = ("lights", "sensors", "sirens")\n'
+    'ACTIONS = {"sirens": {"play": False, "stop": False}}\n'
+    'async def _fetch(client, path):\n'
+    '    return await client.get_all_pages(path)\n'
+    'async def list_widgets(client):\n'
+    '    return await _fetch(client, _W)\n'
+    'async def create_widget(client, body):\n'
+    '    return await client.post(_W, json=body)\n'
+    'async def delete_widget(client, wid):\n'
+    '    path = f"{_W}/{wid}"\n'
+    '    return await client.delete(path)\n'
+    'def _gadget_path(gid):\n'
+    '    return f"{_ROOT}/gadgets/{gid}"\n'
+    'async def update_gadget(client, gid, body):\n'
+    '    return await client.patch(_gadget_path(gid), json=body)\n'
+    'async def kind_list(client, kind):\n'
+    '    return await client.get(f"/proxy/protect/integration/v1/{kind}")\n'
+    'async def act(client, kind, did, action):\n'
+    '    return await client.post(f"/proxy/protect/integration/v1/{kind}/{did}/{action}")\n'
+    'def not_a_call(d):\n'
+    '    return d.get("/proxy/network/integration/v1/sites/{site_id}/ghost")\n'
+    'UNUSED = "/proxy/network/integration/v1/sites/{site_id}/unused"\n'
+)
+
+
+def test_collect_tool_references_resolves_methods(tmp_path):
+    (tmp_path / "mod.py").write_text(_MOD)
+    refs = {(m, spec_coverage.normalize_path(p)) for m, p in spec_coverage.collect_tool_references([tmp_path])}
+    net = "/proxy/network/integration/v1/sites/{}"
+    assert ("GET", f"{net}/widgets") in refs            # through a local helper
+    assert ("POST", f"{net}/widgets") in refs           # direct call
+    assert ("DELETE", f"{net}/widgets/{{}}") in refs    # through a local variable
+    assert ("PATCH", f"{net}/gadgets/{{}}") in refs     # path built by a helper the caller uses
+    assert ("DELETE", f"{net}/widgets") not in refs     # exact calls do not leak other methods
+    assert not any(p.endswith("/ghost") for _, p in refs)    # dict.get is not an HTTP call
+    assert not any(p.endswith("/unused") for _, p in refs)   # never used by a function
+    protect = "/proxy/protect/integration/v1"
+    assert ("GET", f"{protect}/lights") in refs and ("GET", f"{protect}/sensors") in refs
+    assert ("POST", f"{protect}/sirens/{{}}/play") in refs
+
+
+def test_method_aware_compute_coverage_and_operation_ids():
+    spec = {"paths": {
+        "/v1/sites/{siteId}/widgets": {"get": {"operationId": "listWidgets"}, "post": {"operationId": "makeWidget"}},
+    }}
+    refs = {("GET", "/proxy/network/integration/v1/sites/{site_id}/widgets")}
+    report = spec_coverage.compute_coverage("network", spec, refs)
+    rows = {(r["method"], r["operation_id"]): r["covered"] for r in report["rows"]}
+    assert rows == {("GET", "listWidgets"): True, ("POST", "makeWidget"): False}
+    assert report["percent"] == 50.0 and report["path_percent"] == 100.0
+
+
+def test_real_repo_counts_protect_accessories_and_server_info():
+    reports = {r["service"].split()[0]: r for r in spec_coverage.load_reports()}
+    covered = {(r["method"], r["path"]) for r in reports["protect"]["rows"] if r["covered"]}
+    assert ("GET", "/v1/lights") in covered and ("PATCH", "/v1/sensors/{id}") in covered
+    assert ("POST", "/v1/sirens/{id}/play") in covered
+    net = {(r["method"], r["path"]) for r in reports["network"]["rows"] if r["covered"]}
+    assert ("GET", "/v1/info") in net and ("GET", "/v1/sites") in net
+    assert ("DELETE", "/v1/sites/{siteId}/networks/{networkId}") not in net
+
+
+def test_expansion_keeps_template_and_websocket_counts_as_get(tmp_path):
+    (tmp_path / "ws.py").write_text(
+        'import websockets\n'
+        'METRIC_TYPES = ("5m", "1h")\n'
+        'CHANNELS = ("events", "devices")\n'
+        '_BASE = "/proxy/protect/integration/v1"\n'
+        'def _url(host, channel):\n'
+        '    return f"wss://{host}{_BASE}/subscribe/{channel}"\n'
+        'async def watch(client, channel):\n'
+        '    async with websockets.connect(_url("h", channel)) as ws:\n'
+        '        return ws\n'
+        'async def metrics(client, metric_type):\n'
+        '    return await client.get(f"/v1/isp-metrics/{metric_type}")\n'
+    )
+    refs = {(m, spec_coverage.normalize_path(p)) for m, p in spec_coverage.collect_tool_references([tmp_path])}
+    assert ("GET", "/proxy/protect/integration/v1/subscribe/events") in refs
+    assert ("GET", "/proxy/protect/integration/v1/subscribe/devices") in refs
+    assert ("GET", "/v1/isp-metrics/{}") in refs and ("GET", "/v1/isp-metrics/5m") in refs
+
+
+def test_path_of_strips_url_prefix():
+    assert spec_coverage._path_of("wss://{}/proxy/x/{y}") == "/proxy/x/{y}"
+    assert spec_coverage._path_of("not a path") is None and spec_coverage._path_of("/") is None

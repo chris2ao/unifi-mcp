@@ -240,3 +240,8 @@ def test_module_conventions():
     assert "LIVE" in ev.list_motion_events.__doc__
     assert "no REST" in ev.list_smart_detections.__doc__ or "no REST" in ev.list_smart_detections.__doc__.replace("\n", " ")
     assert "—" not in Path(ev.__file__).read_text()
+
+
+def test_ws_url_rejects_unknown_channel():
+    with pytest.raises(ValueError):
+        ev._ws_url("https://192.0.2.1", "../events")
