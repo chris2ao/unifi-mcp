@@ -166,7 +166,7 @@ git commit -m "feat: CLAUD-929 validate and build NAT rule bodies"
   - `async def create_nat_rule(client, description: str, nat_type: str, protocol: str = "all", ip_version: str = "IPV4", in_interface: str | None = None, out_interface: str | None = None, translated_ip: str | None = None, translated_port: str | int | None = None, source: dict | None = None, destination: dict | None = None, exclude: bool = False, enabled: bool = True, logging: bool = False, rule_index: int | None = None, confirm: bool = False) -> dict`
   - Private helpers later tasks reuse: `_fetch_rules(client) -> list[dict]` (raw, uncached), `_find(rules, rule_id) -> dict | None`, `_check_references(client, body) -> dict | None` (every interface, `network_conf_id` and firewall group id exists), `_verify(client, rule_id, intended: dict) -> dict` (the read-back), `_fingerprint(rule: dict) -> str`, `_remember_preview(tool, rule_id, rule)`, `_changed_since_preview(tool, rule_id, rule) -> dict | None` (same TTL and CONFLICT shape as `zbf_official.py`, with NAT wording).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `test_module_conventions`: `GROUP`, `TIER2_TOOLS` as above, `len(TOOLS) == 5`.
   - `test_get_nat_rule_found` and `test_get_nat_rule_not_found` (category `NOT_FOUND`).
   - `test_create_preview_sends_nothing`: `confirm=False` returns `preview: True`, the built `body`, and an `impact` string; respx asserts no POST was made.
@@ -176,10 +176,10 @@ git commit -m "feat: CLAUD-929 validate and build NAT rule bodies"
   - `test_create_confirm_posts_and_verifies`: POST returns the saved rule with an `_id`; the follow-up GET contains it; result has `executed: True`, `verified: True`, `rule["id"]`; `client.invalidate_cache` called with `"routing"`.
   - `test_create_reports_mismatch`: the follow-up GET returns the rule with `protocol: "tcp_udp"` instead of `"udp"`; result has `verified: False` and `mismatches == {"protocol": {"intended": "udp", "saved": "tcp_udp"}}` (Edge Case 5).
   - `test_create_empty_200_is_not_success`: POST returns `{}`; `executed: False`.
-- [ ] **Step 2: Run them and confirm they fail** (`ModuleNotFoundError`).
-- [ ] **Step 3: Implement `get_nat_rule`, `create_nat_rule` and the helpers.** `_verify` compares only the keys of the intended body (nested filters compared key by key), so controller-added keys do not count as mismatches. The created rule is found by the `_id` in the POST response, else by exact `description` when exactly one rule has it, else `verified: False` with a message.
-- [ ] **Step 4: Run `uv run pytest tests/unit/test_network_nat_rules.py -q` and confirm they pass.**
-- [ ] **Step 5: Commit** `feat: CLAUD-929 add get_nat_rule and create_nat_rule`
+- [x] **Step 2: Run them and confirm they fail** (`ModuleNotFoundError`).
+- [x] **Step 3: Implement `get_nat_rule`, `create_nat_rule` and the helpers.** `_verify` compares only the keys of the intended body (nested filters compared key by key), so controller-added keys do not count as mismatches. The created rule is found by the `_id` in the POST response, else by exact `description` when exactly one rule has it, else `verified: False` with a message.
+- [x] **Step 4: Run `uv run pytest tests/unit/test_network_nat_rules.py -q` and confirm they pass.**
+- [x] **Step 5: Commit** `feat: CLAUD-929 add get_nat_rule and create_nat_rule`
 
 ### Task 4: `update_nat_rule`, `toggle_nat_rule`, `delete_nat_rule`  `critical`
 
@@ -196,7 +196,7 @@ git commit -m "feat: CLAUD-929 validate and build NAT rule bodies"
   - `async def toggle_nat_rule(client, rule_id: str, enabled: bool, confirm: bool = False) -> dict` (PUT the fetched rule with only `enabled` changed).
   - `async def delete_nat_rule(client, rule_id: str, confirm: bool = False) -> dict` (DELETE, then verify the id is gone).
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
   - `test_rule_to_args_round_trips`: for each rule in `nat_rules.json` except the predefined one, `build_rule(**rule_to_args(r))` equals the rule's body keys.
   - `test_update_preview_shows_before_and_after` and sends no PUT.
   - `test_update_merges_unspecified_fields`: only `description` given; the PUT JSON keeps every other field and `_id`.
@@ -207,20 +207,20 @@ git commit -m "feat: CLAUD-929 validate and build NAT rule bodies"
   - `test_delete_confirm_deletes_and_verifies_gone`: DELETE called on `.../nat/{id}`; follow-up GET lacks it; `verified: True`.
   - `test_delete_conflict_when_changed_after_preview`.
   - `test_writes_invalidate_routing_cache` (parametrized over the three tools).
-- [ ] **Step 2: Run them and confirm they fail.**
-- [ ] **Step 3: Implement the three tools and `rule_to_args`.** When `nat_type` changes, do not carry `in_interface`, `out_interface`, `ip_address` or `port` over from the current rule; the caller supplies the new ones.
-- [ ] **Step 4: Run `uv run pytest tests/unit/test_network_nat_rules.py tests/unit/test_network_nat_body.py -q` and confirm they pass.**
-- [ ] **Step 5: Commit** `feat: CLAUD-929 add update, toggle and delete for NAT rules`
-- [ ] **Step 6: Review now (`critical`: delete and live traffic changes).** `code-reviewer` (sonnet) on `git diff main...HEAD -- src/unifi_mcp/tools/network/nat_*.py`; fix CRITICAL and HIGH findings before Task 5.
+- [x] **Step 2: Run them and confirm they fail.**
+- [x] **Step 3: Implement the three tools and `rule_to_args`.** When `nat_type` changes, do not carry `in_interface`, `out_interface`, `ip_address` or `port` over from the current rule; the caller supplies the new ones.
+- [x] **Step 4: Run `uv run pytest tests/unit/test_network_nat_rules.py tests/unit/test_network_nat_body.py -q` and confirm they pass.**
+- [x] **Step 5: Commit** `feat: CLAUD-929 add update, toggle and delete for NAT rules`
+- [x] **Step 6: Review now (`critical`: delete and live traffic changes).** Changed: the review found no CRITICAL or HIGH; MEDIUM 1-3, half of 4 and LOW 3 were fixed in `0f7fe74` (removed-field verification, `changes` lists removals, index check only on a move, exclude rules drop stale translation, invert-only filter is NONE); the rest went to bundle CLAUD-930. `code-reviewer` (sonnet) on `git diff main...HEAD -- src/unifi_mcp/tools/network/nat_*.py`; fix CRITICAL and HIGH findings before Task 5.
 
 ### Task 5: docs, counts and version 0.11.0
 
 **Files:** `docs/API.md` (new "NAT Rules (5 tools)" section after Routing, same layout as the Routing section: module, group `security`, tier per tool, parameters, returns), `docs/TOOLS.md` (regenerated), `docs/COMPATIBILITY.md` (NAT row: v2 endpoint, read and write, sources, verified live in Wave 3), `README.md` (category table row "NAT rules | 5 | ..." and the Routing row's note), `CHANGELOG.md` (`## [0.11.0] - <release date>` with Added / Changed / Notes in the v0.10.0 style), `pyproject.toml` (`version = "0.11.0"`), `.claude-plugin/plugin.json` (version and tool total +5), `uv.lock` (`uv lock`).
 
-- [ ] **Step 1:** `uv run python scripts/gen_tool_docs.py` then `uv run python scripts/gen_tool_docs.py --check`. Expected: `network 171`.
-- [ ] **Step 2:** Write the API, README, COMPATIBILITY and CHANGELOG text. The CHANGELOG Notes say what was not verified live yet; Wave 3 updates them.
-- [ ] **Step 3:** `uv lock` and `uv run pytest -q`. Expected: all pass, coverage at least 80%.
-- [ ] **Step 4: Commit** `docs: CLAUD-929 document NAT rule tools and bump to 0.11.0`
+- [x] **Step 1:** `uv run python scripts/gen_tool_docs.py` then `uv run python scripts/gen_tool_docs.py --check`. Expected: `network 171`.
+- [x] **Step 2:** Write the API, README, COMPATIBILITY and CHANGELOG text. The CHANGELOG Notes say what was not verified live yet; Wave 3 updates them.
+- [x] **Step 3:** `uv lock` and `uv run pytest -q`. Changed: run `uv sync --all-extras` (as CI does); a plain `uv sync` removes pytest. Expected: all pass, coverage at least 80%.
+- [x] **Step 4: Commit** `docs: CLAUD-929 document NAT rule tools and bump to 0.11.0`
 
 ### Wave 2 checkpoint
 
