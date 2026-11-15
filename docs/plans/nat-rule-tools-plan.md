@@ -224,10 +224,10 @@ git commit -m "feat: CLAUD-929 validate and build NAT rule bodies"
 
 ### Wave 2 checkpoint
 
-- [ ] `uv run pytest -q` and `uv run python scripts/gen_tool_docs.py --check` pass
-- [ ] Done-when checks verified
-- [ ] `code-reviewer` (sonnet) on `git diff main...HEAD` (skip files already reviewed in Task 4 Step 6) and `security-reviewer` (inherit) once on the whole diff (the tools change live gateway traffic handling); fix CRITICAL and HIGH
-- [ ] Status line sent to the owner
+- [x] `uv run pytest -q` and `uv run python scripts/gen_tool_docs.py --check` pass
+- [x] Done-when checks verified
+- [x] `code-reviewer` (sonnet) on `git diff main...HEAD` (skip files already reviewed in Task 4 Step 6) and `security-reviewer` (inherit) once on the whole diff (the tools change live gateway traffic handling); fix CRITICAL and HIGH. Changed: the security review found one HIGH (IPv6 zone ids let arbitrary text through `address_value`) and one MEDIUM (the tool's preview guard failed open and was keyed by rule id); both fixed in `0bc6e9b`, with the guard now keyed by call parameters and comparing the exact request. The repo is public, so the branch history was rewritten (unpushed) to replace home-LAN values with documentation addresses; real values live in CLAUD-929.
+- [x] Status line sent to the owner
 
 ---
 
