@@ -76,8 +76,13 @@ def test_module_conventions():
     from unifi_mcp.tools.network import nat_rules
 
     assert nat_rules.GROUP == "security"
-    assert nat_rules.TIER2_TOOLS == {"create_nat_rule": "routing"}
-    assert [t.__name__ for t in nat_rules.TOOLS] == ["get_nat_rule", "create_nat_rule"]
+    assert nat_rules.TIER2_TOOLS == {
+        "create_nat_rule": "routing", "update_nat_rule": "routing",
+        "toggle_nat_rule": "routing", "delete_nat_rule": "routing",
+    }
+    assert [t.__name__ for t in nat_rules.TOOLS] == [
+        "get_nat_rule", "create_nat_rule", "update_nat_rule", "toggle_nat_rule", "delete_nat_rule",
+    ]
 
 
 # --- get ---------------------------------------------------------------------
@@ -299,3 +304,261 @@ async def test_create_empty_200_is_not_success(mock_client):
     respx.post(NAT).mock(return_value=httpx.Response(200, json={}))
     result = await create_nat_rule(mock_client, **ntp_args(), confirm=True)
     assert result["executed"] is False
+
+
+# --- update, toggle, delete ----------------------------------------------------
+
+class Console:
+    """A stateful fake of the /nat collection: GET returns the current list, PUT and DELETE change it."""
+
+    def __init__(self, records=None):
+        self.records = records if records is not None else rules()
+        self.puts: list[dict] = []
+        self.deletes: list[str] = []
+
+    def mount(self):
+        respx.get(NAT).mock(side_effect=lambda r: httpx.Response(200, json=copy.deepcopy(self.records)))
+        respx.put(url__regex=rf"{NAT}/.+").mock(side_effect=self._put)
+        respx.delete(url__regex=rf"{NAT}/.+").mock(side_effect=self._delete)
+        mock_lookups()
+        return self
+
+    def _put(self, request):
+        rule_id = request.url.path.rsplit("/", 1)[1]
+        body = json.loads(request.content)
+        self.puts.append(body)
+        self.records = [body if r["_id"] == rule_id else r for r in self.records]
+        return httpx.Response(200, json=body)
+
+    def _delete(self, request):
+        rule_id = request.url.path.rsplit("/", 1)[1]
+        self.deletes.append(rule_id)
+        self.records = [r for r in self.records if r["_id"] != rule_id]
+        return httpx.Response(200, json={})
+
+    def edit(self, rule_id, **changes):
+        self.records = [{**r, **changes} if r["_id"] == rule_id else r for r in self.records]
+
+
+@respx.mock
+async def test_update_preview_shows_before_and_after(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    console = Console().mount()
+    result = await update_nat_rule(mock_client, DNAT_ID, description="Forward 9443 to web",
+                                   destination={"port": "9443"})
+    assert result["preview"] is True
+    assert result["before"]["description"] == "Forward 8443 to web"
+    assert result["after"]["description"] == "Forward 9443 to web"
+    assert result["changes"]["destination_filter.port"] == {"from": "8443", "to": "9443"}
+    assert console.puts == []
+
+
+@respx.mock
+async def test_update_merges_unspecified_fields(mock_client, monkeypatch):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    invalidated = []
+    monkeypatch.setattr(mock_client, "invalidate_cache", invalidated.append)
+    console = Console().mount()
+    original = copy.deepcopy(console.records[0])
+    await update_nat_rule(mock_client, DNAT_ID, description="Renamed")
+    result = await update_nat_rule(mock_client, DNAT_ID, description="Renamed", confirm=True)
+    assert result["executed"] is True and result["verified"] is True
+    assert console.puts == [{**original, "description": "Renamed"}]
+    assert invalidated == ["routing"]
+
+
+@respx.mock
+async def test_update_type_change_drops_type_specific_fields(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    console = Console().mount()
+    lan = "00000000-0000-0000-0000-00000000lan1"
+    result = await update_nat_rule(mock_client, DNAT_ID, nat_type="MASQUERADE", out_interface=lan,
+                                   confirm=True)
+    assert result["verified"] is True
+    (put,) = console.puts
+    assert put["type"] == "MASQUERADE" and put["out_interface"] == lan
+    assert "in_interface" not in put and "ip_address" not in put and "port" not in put
+
+
+@respx.mock
+async def test_update_exclude_drops_translation(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    console = Console().mount()
+    result = await update_nat_rule(mock_client, DNAT_ID, exclude=True, confirm=True)
+    assert result["verified"] is True
+    (put,) = console.puts
+    assert put["exclude"] is True and "ip_address" not in put and "port" not in put
+
+
+@respx.mock
+async def test_update_clear_flags(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    console = Console().mount()
+    await update_nat_rule(mock_client, DNAT_ID, clear_destination=True, clear_translated_port=True,
+                          confirm=True)
+    (put,) = console.puts
+    assert put["destination_filter"] == {"filter_type": "NONE"} and "port" not in put
+
+
+@respx.mock
+async def test_update_clear_and_set_same_side_rejected(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    Console().mount()
+    result = await update_nat_rule(mock_client, DNAT_ID, source={"address": "192.0.2.9"}, clear_source=True)
+    assert result["category"] == "VALIDATION_ERROR" and "source" in result["message"]
+
+
+@respx.mock
+async def test_update_rule_index_collision_rejected(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    Console().mount()
+    result = await update_nat_rule(mock_client, DNAT_ID, rule_index=2)
+    assert result["category"] == "VALIDATION_ERROR" and "rule_index" in result["message"]
+    ok = await update_nat_rule(mock_client, DNAT_ID, rule_index=1)
+    assert ok["preview"] is True
+
+
+@respx.mock
+async def test_update_validates_merged_body(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    Console().mount()
+    result = await update_nat_rule(mock_client, DNAT_ID, protocol="all")
+    assert result["category"] == "VALIDATION_ERROR" and "protocol" in result["message"]
+
+
+@respx.mock
+async def test_update_conflict_when_changed_after_preview(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    console = Console().mount()
+    await update_nat_rule(mock_client, DNAT_ID, description="Renamed")
+    console.edit(DNAT_ID, description="Edited in the UI")
+    result = await update_nat_rule(mock_client, DNAT_ID, description="Renamed", confirm=True)
+    assert result["category"] == "CONFLICT" and console.puts == []
+
+
+@pytest.mark.parametrize("tool,kwargs", [
+    ("update_nat_rule", {"description": "x"}),
+    ("toggle_nat_rule", {"enabled": False}),
+    ("delete_nat_rule", {}),
+])
+@respx.mock
+async def test_update_toggle_delete_refuse_predefined(mock_client, tool, kwargs):
+    from unifi_mcp.tools.network import nat_rules
+
+    console = Console().mount()
+    result = await getattr(nat_rules, tool)(mock_client, PREDEFINED_ID, **kwargs)
+    assert result["category"] == "VALIDATION_ERROR" and "predefined" in result["message"]
+    assert console.puts == [] and console.deletes == []
+
+
+@pytest.mark.parametrize("tool,kwargs", [
+    ("update_nat_rule", {"description": "x"}),
+    ("toggle_nat_rule", {"enabled": False}),
+    ("delete_nat_rule", {}),
+])
+@respx.mock
+async def test_update_toggle_delete_not_found_and_bad_id(mock_client, tool, kwargs):
+    from unifi_mcp.tools.network import nat_rules
+
+    Console().mount()
+    assert (await getattr(nat_rules, tool)(mock_client, "missing", **kwargs))["category"] == "NOT_FOUND"
+    assert (await getattr(nat_rules, tool)(mock_client, "a/b", **kwargs))["category"] == "VALIDATION_ERROR"
+
+
+@respx.mock
+async def test_toggle_changes_only_enabled(mock_client):
+    from unifi_mcp.tools.network.nat_rules import toggle_nat_rule
+
+    console = Console().mount()
+    original = copy.deepcopy(console.records[1])
+    preview = await toggle_nat_rule(mock_client, MASQ_ID, enabled=True)
+    assert preview["preview"] is True and console.puts == []
+    result = await toggle_nat_rule(mock_client, MASQ_ID, enabled=True, confirm=True)
+    assert result["executed"] is True and result["verified"] is True
+    assert console.puts == [{**original, "enabled": True}]
+
+
+async def test_toggle_requires_bool(mock_client):
+    from unifi_mcp.tools.network.nat_rules import toggle_nat_rule
+
+    assert (await toggle_nat_rule(mock_client, MASQ_ID, enabled="yes"))["category"] == "VALIDATION_ERROR"
+
+
+@respx.mock
+async def test_toggle_conflict_when_changed_after_preview(mock_client):
+    from unifi_mcp.tools.network.nat_rules import toggle_nat_rule
+
+    console = Console().mount()
+    await toggle_nat_rule(mock_client, MASQ_ID, enabled=True)
+    console.edit(MASQ_ID, logging=False)
+    result = await toggle_nat_rule(mock_client, MASQ_ID, enabled=True, confirm=True)
+    assert result["category"] == "CONFLICT" and console.puts == []
+
+
+@respx.mock
+async def test_delete_preview_then_confirm_deletes_and_verifies_gone(mock_client):
+    from unifi_mcp.tools.network.nat_rules import delete_nat_rule
+
+    console = Console().mount()
+    preview = await delete_nat_rule(mock_client, DNAT_ID)
+    assert preview["preview"] is True and preview["rule"]["id"] == DNAT_ID and console.deletes == []
+    result = await delete_nat_rule(mock_client, DNAT_ID, confirm=True)
+    assert result["executed"] is True and result["verified"] is True
+    assert console.deletes == [DNAT_ID]
+
+
+@respx.mock
+async def test_delete_unverified_when_rule_remains(mock_client):
+    from unifi_mcp.tools.network.nat_rules import delete_nat_rule
+
+    Console().mount()
+    respx.delete(url__regex=rf"{NAT}/.+").mock(return_value=httpx.Response(200, json={}))
+    result = await delete_nat_rule(mock_client, DNAT_ID, confirm=True)
+    assert result["verified"] is False and "still" in result["message"]
+
+
+@respx.mock
+async def test_delete_conflict_when_changed_after_preview(mock_client):
+    from unifi_mcp.tools.network.nat_rules import delete_nat_rule
+
+    console = Console().mount()
+    await delete_nat_rule(mock_client, DNAT_ID)
+    console.edit(DNAT_ID, enabled=False)
+    result = await delete_nat_rule(mock_client, DNAT_ID, confirm=True)
+    assert result["category"] == "CONFLICT" and console.deletes == []
+
+
+@pytest.mark.parametrize("tool,kwargs", [
+    ("update_nat_rule", {"description": "x"}),
+    ("toggle_nat_rule", {"enabled": False}),
+    ("delete_nat_rule", {}),
+])
+@respx.mock
+async def test_writes_invalidate_routing_cache(mock_client, monkeypatch, tool, kwargs):
+    from unifi_mcp.tools.network import nat_rules
+
+    invalidated = []
+    monkeypatch.setattr(mock_client, "invalidate_cache", invalidated.append)
+    Console().mount()
+    await getattr(nat_rules, tool)(mock_client, DNAT_ID, **kwargs, confirm=True)
+    assert invalidated == ["routing"]
+
+
+def test_preview_entries_expire(monkeypatch):
+    from unifi_mcp.tools.network import nat_rules
+
+    now = [1000.0]
+    monkeypatch.setattr(nat_rules.time, "monotonic", lambda: now[0])
+    nat_rules._remember_preview("toggle_nat_rule", "old", {"a": 1})
+    now[0] += nat_rules._PREVIEW_TTL_SECONDS + 1
+    nat_rules._remember_preview("toggle_nat_rule", "new", {"a": 1})
+    assert ("toggle_nat_rule", "old") not in nat_rules._previewed

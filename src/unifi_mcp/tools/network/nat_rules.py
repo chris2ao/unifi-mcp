@@ -24,7 +24,7 @@ import json
 import time
 
 from unifi_mcp.auth.client import UnifiClient
-from unifi_mcp.tools.network.nat_body import build_rule, is_error
+from unifi_mcp.tools.network.nat_body import build_rule, is_error, rule_to_args
 from unifi_mcp.tools.network.routing import NAT_PATH, _format_nat_rule
 from unifi_mcp.tools.network.zbf_official import _executed, _preview
 from unifi_mcp.validation import check_id, validation_error
@@ -33,6 +33,9 @@ GROUP = "security"
 
 TIER2_TOOLS = {
     "create_nat_rule": "routing",
+    "update_nat_rule": "routing",
+    "toggle_nat_rule": "routing",
+    "delete_nat_rule": "routing",
 }
 
 _CACHE = "routing"
@@ -261,7 +264,198 @@ async def create_nat_rule(
     return {**result, **await _verify(client, _saved_id(response), body)}
 
 
+# --- existing rules -------------------------------------------------------------
+
+_TYPE_SPECIFIC = ("in_interface", "out_interface", "ip_address", "port")
+
+
+async def _load_editable(client: UnifiClient, rule_id: str, verb: str) -> tuple[dict | None, dict | None]:
+    """(rule, None) for a user-defined rule, else (None, error)."""
+    error = check_id(rule_id, "rule_id")
+    if error:
+        return None, error
+    rule = _find(await _fetch_rules(client), rule_id)
+    if rule is None:
+        return None, _not_found(rule_id)
+    if rule.get("is_predefined"):
+        return None, validation_error(
+            f"NAT rule '{_format_nat_rule(rule)['description']}' is predefined by the console and "
+            f"cannot be {verb}."
+        )
+    return rule, None
+
+
+def _changes(before: dict, after: dict) -> dict:
+    return {k: {"from": v["saved"], "to": v["intended"]} for k, v in _mismatches(after, before).items()}
+
+
+async def _put(client: UnifiClient, tool: str, rule_id: str, record: dict, intended: dict) -> dict:
+    response = await client.put(f"{NAT_PATH}/{rule_id}", json=record)
+    client.invalidate_cache(_CACHE)
+    result = _executed(tool, response, rule_id=rule_id)
+    if not result["executed"]:
+        return result
+    return {**result, **await _verify(client, rule_id, intended)}
+
+
+def _merge_args(current: dict, given: dict, clears: dict) -> dict:
+    """Overlay the caller's values on the current rule's arguments, or return an error."""
+    args = rule_to_args(current)
+    if is_error(args):
+        return args
+    for side in ("source", "destination"):
+        if clears[f"clear_{side}"] and given[side] is not None:
+            return validation_error(f"Pass {side} or clear_{side}, not both.")
+    if clears["clear_translated_port"] and given["translated_port"] is not None:
+        return validation_error("Pass translated_port or clear_translated_port, not both.")
+    if given["nat_type"] is not None and given["nat_type"] != current.get("type"):
+        args.update(in_interface=None, out_interface=None, translated_ip=None, translated_port=None)
+    if given["exclude"] is True and given["translated_ip"] is None:
+        args.update(translated_ip=None, translated_port=None)
+    args.update({k: v for k, v in given.items() if v is not None})
+    for key in ("source", "destination", "translated_port"):
+        if clears[f"clear_{key}"]:
+            args[key] = None
+    return args
+
+
+def _check_index_free(rule_index, rule_id: str, rules: list[dict]) -> dict | None:
+    if rule_index is None:
+        return None
+    owner = next((r for r in rules if r.get("rule_index") == rule_index), None)
+    if owner is not None and owner.get("_id") != rule_id:
+        return validation_error(
+            f"rule_index {rule_index} is used by '{_format_nat_rule(owner)['description']}'. Pick a free index."
+        )
+    return None
+
+
+def _updated_record(current: dict, body: dict) -> dict:
+    record = {k: v for k, v in current.items() if k not in _TYPE_SPECIFIC or k in body}
+    return {**record, **body}
+
+
+async def update_nat_rule(
+    client: UnifiClient,
+    rule_id: str,
+    description: str | None = None,
+    nat_type: str | None = None,
+    protocol: str | None = None,
+    ip_version: str | None = None,
+    in_interface: str | None = None,
+    out_interface: str | None = None,
+    translated_ip: str | None = None,
+    translated_port: str | int | None = None,
+    source: dict | None = None,
+    destination: dict | None = None,
+    clear_source: bool = False,
+    clear_destination: bool = False,
+    clear_translated_port: bool = False,
+    exclude: bool | None = None,
+    enabled: bool | None = None,
+    logging: bool | None = None,
+    rule_index: int | None = None,
+    confirm: bool = False,
+) -> dict:
+    """Update a user-defined NAT rule. Only the fields you pass change. Preview first.
+
+    A given source or destination replaces that whole filter; clear_source /
+    clear_destination match everything again; clear_translated_port drops the
+    port rewrite. Changing nat_type drops the old interface and translation, so
+    pass the new ones. Setting exclude=True drops the translation. The merged
+    rule is validated like create_nat_rule. Refused with CONFLICT if the rule
+    changed after the preview.
+    """
+    clears = {"clear_source": clear_source, "clear_destination": clear_destination,
+              "clear_translated_port": clear_translated_port}
+    for name, value in clears.items():
+        if not isinstance(value, bool):
+            return validation_error(f"{name} must be a boolean.")
+    given = {"description": description, "nat_type": nat_type, "protocol": protocol,
+             "ip_version": ip_version, "in_interface": in_interface, "out_interface": out_interface,
+             "translated_ip": translated_ip, "translated_port": translated_port, "source": source,
+             "destination": destination, "exclude": exclude, "enabled": enabled, "logging": logging,
+             "rule_index": rule_index}
+    current, error = await _load_editable(client, rule_id, "updated")
+    if error:
+        return error
+    return await _apply_update(client, rule_id, current, _merge_args(current, given, clears), confirm)
+
+
+async def _apply_update(client: UnifiClient, rule_id: str, current: dict, args: dict, confirm: bool) -> dict:
+    if is_error(args):
+        return args
+    body = build_rule(**args)
+    if is_error(body):
+        return body
+    error = _check_index_free(body.get("rule_index"), rule_id, await _fetch_rules(client))
+    error = error or await _check_references(client, body)
+    if error:
+        return error
+    record = _updated_record(current, body)
+    if not confirm:
+        _remember_preview("update_nat_rule", rule_id, current)
+        return _preview(
+            "update_nat_rule", f"Will update NAT rule {rule_id}. Call again with confirm=True to execute.",
+            _IMPACT, rule_id=rule_id, before=_format_nat_rule(current), after=_format_nat_rule(record),
+            changes=_changes(current, body),
+        )
+    conflict = _changed_since_preview("update_nat_rule", rule_id, current)
+    if conflict:
+        return conflict
+    return await _put(client, "update_nat_rule", rule_id, record, body)
+
+
+async def toggle_nat_rule(client: UnifiClient, rule_id: str, enabled: bool, confirm: bool = False) -> dict:
+    """Enable or disable a user-defined NAT rule without changing anything else. Preview first."""
+    if not isinstance(enabled, bool):
+        return validation_error("enabled must be a boolean.")
+    current, error = await _load_editable(client, rule_id, "toggled")
+    if error:
+        return error
+    if not confirm:
+        _remember_preview("toggle_nat_rule", rule_id, current)
+        return _preview(
+            "toggle_nat_rule",
+            f"Will set NAT rule '{_format_nat_rule(current)['description']}' enabled={enabled}. "
+            "Call again with confirm=True to execute.",
+            _IMPACT, rule_id=rule_id, enabled=enabled,
+        )
+    conflict = _changed_since_preview("toggle_nat_rule", rule_id, current)
+    if conflict:
+        return conflict
+    return await _put(client, "toggle_nat_rule", rule_id, {**current, "enabled": enabled}, {"enabled": enabled})
+
+
+async def delete_nat_rule(client: UnifiClient, rule_id: str, confirm: bool = False) -> dict:
+    """Delete a user-defined NAT rule. Irreversible; preview first."""
+    current, error = await _load_editable(client, rule_id, "deleted")
+    if error:
+        return error
+    if not confirm:
+        _remember_preview("delete_nat_rule", rule_id, current)
+        return _preview(
+            "delete_nat_rule",
+            f"Will delete NAT rule '{_format_nat_rule(current)['description']}'. This is irreversible. "
+            "Call again with confirm=True to execute.",
+            _IMPACT, rule_id=rule_id, rule=_format_nat_rule(current),
+        )
+    conflict = _changed_since_preview("delete_nat_rule", rule_id, current)
+    if conflict:
+        return conflict
+    response = await client.delete(f"{NAT_PATH}/{rule_id}")
+    client.invalidate_cache(_CACHE)
+    result = _executed("delete_nat_rule", response, expect_body=False, rule_id=rule_id)
+    if _find(await _fetch_rules(client), rule_id) is None:
+        return {**result, "verified": True}
+    return {**result, "verified": False,
+            "message": "The delete returned success but the rule is still listed. Check list_nat_rules."}
+
+
 TOOLS = [
     get_nat_rule,
     create_nat_rule,
+    update_nat_rule,
+    toggle_nat_rule,
+    delete_nat_rule,
 ]

@@ -265,3 +265,69 @@ def test_is_error():
     assert not is_error({"error": False})
     assert not is_error({"filter_type": "NONE"})
     assert not is_error(None)
+
+
+# --- rule_to_args -------------------------------------------------------------
+
+def _body_keys(stored: dict, built: dict) -> dict:
+    return {k: stored[k] for k in built}
+
+
+def test_rule_to_args_round_trips_fixture_rules():
+    from tests.unit.test_network_traffic_rules import load_fixture
+    from unifi_mcp.tools.network.nat_body import rule_to_args
+
+    for stored in load_fixture("nat_rules.json"):
+        if stored["is_predefined"]:
+            continue
+        built = build_rule(**rule_to_args(stored))
+        assert not is_error(built), built
+        assert built == _body_keys(stored, built)
+
+
+def test_rule_to_args_round_trips_built_bodies():
+    from unifi_mcp.tools.network.nat_body import rule_to_args
+
+    bodies = [
+        rule(),
+        rule(exclude=True, translated_ip=None, translated_port=None,
+             source={"address": "192.0.2.0/24", "invert_address": True}),
+        rule(nat_type="MASQUERADE", in_interface=None, out_interface=DEFAULT_ID,
+             translated_ip=None, translated_port=None,
+             source={"firewall_group_ids": ["g1"]}, destination={"port": "1-1024", "invert_port": True}),
+    ]
+    for body in bodies:
+        assert build_rule(**rule_to_args(body)) == body
+
+
+def test_rule_to_args_treats_empty_strings_as_absent():
+    from unifi_mcp.tools.network.nat_body import rule_to_args
+
+    stored = {"description": "m", "type": "MASQUERADE", "protocol": "all", "ip_version": "IPV4",
+              "out_interface": DEFAULT_ID, "in_interface": "", "ip_address": "", "port": "",
+              "exclude": False, "enabled": True, "logging": False, "rule_index": 4,
+              "source_filter": {"filter_type": "ADDRESS_AND_PORT", "address": "", "port": "",
+                                "invert_address": False, "invert_port": False},
+              "destination_filter": {"filter_type": "NONE"}}
+    args = rule_to_args(stored)
+    assert args["translated_ip"] is None and args["translated_port"] is None
+    assert args["in_interface"] is None and args["source"] is None
+    assert not is_error(build_rule(**args))
+
+
+def test_rule_to_args_defaults_missing_fields():
+    from unifi_mcp.tools.network.nat_body import rule_to_args
+
+    args = rule_to_args({"description": "d", "type": "DNAT", "in_interface": DEFAULT_ID,
+                         "ip_address": "192.0.2.53"})
+    assert (args["protocol"], args["ip_version"], args["exclude"], args["enabled"], args["logging"],
+            args["rule_index"], args["source"], args["destination"]) == (
+        "all", "IPV4", False, True, False, None, None, None)
+
+
+def test_rule_to_args_rejects_unknown_filter_type():
+    from unifi_mcp.tools.network.nat_body import rule_to_args
+
+    result = rule_to_args({"description": "d", "type": "DNAT",
+                           "source_filter": {"filter_type": "IID_AND_PORT", "port": "80"}})
+    assert_error(result, "IID_AND_PORT")

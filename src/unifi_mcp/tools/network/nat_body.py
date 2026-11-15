@@ -279,3 +279,58 @@ def build_rule(*, description, nat_type, protocol, ip_version, in_interface, out
     if protocol == "all" and filter_ports(body):
         return validation_error("Matching or translating a port needs protocol tcp, udp or tcp_udp, not 'all'.")
     return body
+
+
+# --- stored rule back to arguments --------------------------------------------
+
+def _present(value: Any) -> Any:
+    """The controller stores absent text fields as ''; treat those as None."""
+    return None if value in ("", None) else value
+
+
+def _filter_to_spec(side: str, stored: Any) -> dict | None:
+    if not isinstance(stored, dict):
+        return None
+    filter_type = stored.get("filter_type", "NONE")
+    if filter_type == "NONE":
+        return None
+    if filter_type == "NETWORK_CONF":
+        return {"network_id": stored.get("network_conf_id")}
+    if filter_type == "FIREWALL_GROUPS":
+        return {"firewall_group_ids": list(stored.get("firewall_group_ids") or [])}
+    if filter_type != "ADDRESS_AND_PORT":
+        return validation_error(
+            f"This rule's {side} filter uses filter_type {filter_type}, which these tools do not edit. "
+            "Change it in the UniFi UI."
+        )
+    spec = {key: stored[key] for key in ("address", "port") if _present(stored.get(key)) is not None}
+    for flag in ("invert_address", "invert_port"):
+        if stored.get(flag) is True:
+            spec[flag] = True
+    return spec or None
+
+
+def rule_to_args(rule: dict) -> dict:
+    """Keyword arguments for build_rule that rebuild a stored rule, or a VALIDATION_ERROR dict."""
+    source = _filter_to_spec("source", rule.get("source_filter"))
+    destination = _filter_to_spec("destination", rule.get("destination_filter"))
+    error = _first_error(source, destination)
+    if error:
+        return error
+    nat_type = rule.get("type")
+    return {
+        "description": rule.get("description"),
+        "nat_type": nat_type,
+        "protocol": rule.get("protocol", "all"),
+        "ip_version": rule.get("ip_version", "IPV4"),
+        "in_interface": _present(rule.get("in_interface")) if nat_type == "DNAT" else None,
+        "out_interface": _present(rule.get("out_interface")) if nat_type != "DNAT" else None,
+        "translated_ip": _present(rule.get("ip_address")),
+        "translated_port": _present(rule.get("port")),
+        "source": source,
+        "destination": destination,
+        "exclude": rule.get("exclude", False),
+        "enabled": rule.get("enabled", True),
+        "logging": rule.get("logging", False),
+        "rule_index": rule.get("rule_index"),
+    }
