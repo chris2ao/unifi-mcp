@@ -14,15 +14,15 @@ Loaders register tools by group, for example `load_network_tools(groups=["core"]
 |---|---|---:|---:|---:|
 | Network | core | 80 | 57 | 23 |
 | Network | insights | 22 | 22 | 0 |
-| Network | security | 64 | 25 | 39 |
-| **Network** | **all** | **166** | **104** | **62** |
+| Network | security | 69 | 26 | 43 |
+| **Network** | **all** | **171** | **105** | **66** |
 | Protect | cameras | 23 | 18 | 5 |
 | Protect | devices | 8 | 5 | 3 |
 | Protect | security | 9 | 2 | 7 |
 | **Protect** | **all** | **40** | **25** | **15** |
 | Site Manager (cloud) | cloud | 9 | 9 | 0 |
 | **Site Manager (cloud)** | **all** | **9** | **9** | **0** |
-| **Total** | | **215** | **138** | **77** |
+| **Total** | | **220** | **139** | **81** |
 
 ## Network
 
@@ -164,6 +164,11 @@ Loaded by `load_network_tools`.
 | `delete_mac_filter` | 2 | Delete a MAC ACL filter rule. Requires confirm=True after previewing. |
 | `get_acl_rule_order` | 1 | Get the evaluation order of user-defined ACL rules (first id is evaluated first). |
 | `reorder_acl_rules` | 2 | Set the evaluation order of ACL rules. ordered_rule_ids must list every current rule id exactly once. |
+| `get_nat_rule` | 1 | Get one NAT rule by id (from list_nat_rules), read fresh from the console. |
+| `create_nat_rule` | 2 | Create a NAT rule. Preview first (confirm=False), then confirm=True. |
+| `update_nat_rule` | 2 | Update a user-defined NAT rule. Only the fields you pass change. Preview first. |
+| `toggle_nat_rule` | 2 | Enable or disable a user-defined NAT rule without changing anything else. Preview first. |
+| `delete_nat_rule` | 2 | Delete a user-defined NAT rule. Irreversible; preview first. |
 | `list_port_forwards` | 1 | List all port forwarding rules. |
 | `create_port_forward` | 2 | Create a new port forwarding rule. Requires confirm=True after previewing. |
 | `update_port_forward` | 2 | Update an existing port forwarding rule. Requires confirm=True after previewing. |
