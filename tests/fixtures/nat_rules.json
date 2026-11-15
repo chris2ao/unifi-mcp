@@ -1,0 +1,66 @@
+[
+  {
+    "_id": "6735a1f04ee8cb0f1f4a0001",
+    "description": "Forward 8443 to web",
+    "enabled": true,
+    "type": "DNAT",
+    "protocol": "tcp",
+    "ip_version": "IPV4",
+    "in_interface": "00000000-0000-0000-0000-00000000wan1",
+    "ip_address": "192.0.2.20",
+    "port": "443",
+    "exclude": false,
+    "logging": false,
+    "rule_index": 1,
+    "is_predefined": false,
+    "setting_preference": "manual",
+    "source_filter": {"filter_type": "NONE"},
+    "destination_filter": {
+      "filter_type": "ADDRESS_AND_PORT",
+      "port": "8443",
+      "invert_address": false,
+      "invert_port": false
+    }
+  },
+  {
+    "_id": "6735a1f04ee8cb0f1f4a0002",
+    "description": "Masquerade lab to LAN",
+    "enabled": false,
+    "type": "MASQUERADE",
+    "protocol": "udp",
+    "ip_version": "IPV4",
+    "out_interface": "00000000-0000-0000-0000-00000000lan1",
+    "exclude": false,
+    "logging": true,
+    "rule_index": 2,
+    "is_predefined": false,
+    "setting_preference": "manual",
+    "source_filter": {
+      "filter_type": "NETWORK_CONF",
+      "network_conf_id": "00000000-0000-0000-0000-00000000lab1"
+    },
+    "destination_filter": {
+      "filter_type": "ADDRESS_AND_PORT",
+      "address": "192.0.2.53",
+      "port": "123",
+      "invert_address": false,
+      "invert_port": false
+    }
+  },
+  {
+    "_id": "6735a1f04ee8cb0f1f4a0003",
+    "description": "Default WAN masquerade",
+    "enabled": true,
+    "type": "MASQUERADE",
+    "protocol": "all",
+    "ip_version": "IPV4",
+    "out_interface": "00000000-0000-0000-0000-00000000wan1",
+    "exclude": false,
+    "logging": false,
+    "rule_index": 0,
+    "is_predefined": true,
+    "setting_preference": "auto",
+    "source_filter": {"filter_type": "NONE"},
+    "destination_filter": {"filter_type": "NONE"}
+  }
+]

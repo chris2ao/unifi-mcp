@@ -17,6 +17,7 @@ from typing import Any
 
 from unifi_mcp.auth.client import UnifiClient
 from unifi_mcp.errors import ErrorCategory, UnifiError
+from unifi_mcp.validation import clean_text
 
 GROUP = "insights"
 TIER2_TOOLS: dict[str, str] = {}
@@ -174,8 +175,12 @@ async def list_traffic_routes(client: UnifiClient) -> list[dict] | dict:
 def _format_nat_rule(r: dict) -> dict:
     return {
         "id": r.get("_id") or r.get("id", ""),
-        "description": r.get("description") or r.get("name", ""),
+        "description": clean_text(r.get("description") or r.get("name", "")),
         "enabled": r.get("enabled", True),
+        "exclude": r.get("exclude", False),
+        "logging": r.get("logging", False),
+        "rule_index": r.get("rule_index"),
+        "is_predefined": r.get("is_predefined", False),
         "type": r.get("type", ""),
         "protocol": r.get("protocol", ""),
         "ip_address": r.get("ip_address", ""),
