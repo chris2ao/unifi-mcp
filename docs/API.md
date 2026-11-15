@@ -988,9 +988,13 @@ List recent network traffic flows (per-connection records), sorted newest first.
 
 The console returns flows unordered, so on a busy network this is the newest of a sample of up to `limit` matching flows, not guaranteed the newest overall.
 
-Use to inspect what connections happened in the last `minutes` (1 to 10080, default 60). `limit` caps flows returned (1 to 500, default 50). Optional filters: direction (local|outgoing|incoming), protocol (TCP, UDP, ICMP...), action (allowed|blocked), risk (low|medium|high), search (free text over IPs, device names, domains, services). Each flow is compact with bytes_*, source and destination.
+Use to inspect what connections happened in the last `minutes` (1 to 10080, default 60). `limit` caps flows returned (1 to 500, default 50). Optional filters: direction (local|outgoing|incoming), protocol (TCP, UDP, ICMP...), action (allowed|blocked), risk (low|medium|high), search (free text over IPs, device names and domains; it does not match service names), source_port / destination_port (a port or a list of up to 20, matched as any of them; no ranges), service (a console service name such as NTP, DNS or HTTPS). Each flow is compact with bytes_*, source and destination.
 
-- **Parameters:** `minutes: int = 60`, `limit: int = 50`, `direction: str | None = None`, `protocol: str | None = None`, `action: str | None = None`, `risk: str | None = None`, `search: str | None = None`
+The console can write flows to its log well after they happen, so an empty recent window does not prove no traffic: widen `minutes` to check.
+
+Ports are sent as `source_port` / `destination_port` lists of strings; the console rejects ranges such as `"120-125"` with a 400. `service` is upper-cased and sent as a one-item list; the console only knows its own upper-case service names (NTP, DNS, HTTPS, ...) and returns a 400 for any other (verified on Network 11.0.99).
+
+- **Parameters:** `minutes: int = 60`, `limit: int = 50`, `direction: str | None = None`, `protocol: str | None = None`, `action: str | None = None`, `risk: str | None = None`, `search: str | None = None`, `source_port: int | list[int] | None = None`, `destination_port: int | list[int] | None = None`, `service: str | None = None`
 - **Returns:** `dict`
 
 ### get_top_talkers
@@ -1004,9 +1008,9 @@ Rank top traffic talkers by bytes over the last `minutes` (default 60).
 
 ### filter_flows_by_app
 
-Find traffic flows for an application, service or domain by name.
+Find traffic flows for an application or domain by name.
 
-`app_name` is a free-text search (for example "google", "netflix", "dns", "youtube.com") matched by the console against service, domains, and device names. Window `minutes` (1 to 10080, default 60); `limit` 1 to 500.
+`app_name` is a free-text search (for example "google", "netflix", "youtube.com") matched by the console against domains, IPs and device names. It does not match service names such as DNS or NTP; use list_traffic_flows(service=...) for those. Window `minutes` (1 to 10080, default 60); `limit` 1 to 500.
 
 - **Parameters:** `app_name: str`, `minutes: int = 60`, `limit: int = 50`
 - **Returns:** `dict`

@@ -5,6 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.12.0] - 2026-11-15
+
+Port and service filters for traffic flows, so a check like "is NTP reaching the local server" can be answered from the flow log. Tool count is unchanged (171 network tools, 228 in total with everything loaded).
+
+### Added
+
+- `list_traffic_flows` takes `source_port` and `destination_port` (a port or a list of up to 20, matched as any of them) and `service` (a console service name such as NTP, DNS or HTTPS, upper-cased before sending). The console filters on them server-side. It rejects port ranges and unknown service names with a 400, so ranges are refused before the request.
+
+### Fixed
+
+- The `list_traffic_flows` and `filter_flows_by_app` docstrings said free-text search matches service names. It does not ("NTP", "ntp" and "HTTPS" all return nothing on Network 11.0.99), so a search for a service looked like no traffic. The docstrings now point to the `service` filter, and `list_traffic_flows` notes that the console can write flows to its log long after they happen, so an empty recent window does not prove there was no traffic.
+
+### Notes
+
+- Migration: none. The new parameters are optional and default to no filter.
+- Verified live on Network 11.0.99: `destination_port=123` and `service="ntp"` both returned the same 77 flows over five hours; `destination_port=[123, 53]` with `protocol="UDP"` returned their union; a port range is refused before the request, and an unknown service name comes back as `VALIDATION_ERROR` from the console's 400.
+- On that console the flow log ran more than two hours behind real time under heavy load, which is why the docstring warns that an empty recent window is not proof of no traffic.
+
 ## [0.11.1] - 2026-11-14
 
 ### Fixed
@@ -356,6 +374,10 @@ This release was driven by a real-world incident on 2026-04-18 where an offline 
 - Lazy per-product tool loading to keep the initial tool list small.
 - Claude Code plugin bundle with installation guide, setup instructions, and API reference.
 
+[0.12.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.12.0
+[0.11.1]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.11.1
+[0.11.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.11.0
+[0.10.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.10.0
 [0.9.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.9.0
 [0.8.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.8.0
 [0.7.0]: https://github.com/chris2ao/unifi-mcp/releases/tag/v0.7.0

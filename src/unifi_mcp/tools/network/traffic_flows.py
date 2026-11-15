@@ -7,13 +7,18 @@ The endpoint is a read-only query (GET is 405). The body is
 {timestampFrom, timestampTo (epoch ms), pageNumber, pageSize} plus optional
 filters, all lists of strings except search_text:
 
-- search_text (string, free text over IPs, names, domains, services)
+- search_text (string, free text over IPs, device names and domains; it does
+  not match service names, so use the service filter for those)
+- service: upper-case service names from the console's fixed list (NTP, DNS,
+  HTTPS, ...); an unknown name is a 400
+- source_port, destination_port: single ports as strings, combined with OR;
+  ranges are a 400
 - direction: local | outgoing | incoming
 - protocol: UDP, TCP, ICMP, GRE, ... (upper-case IP protocol names)
 - action: allowed | blocked
 - risk: low | medium | high
-- source_ip, destination_ip, source_mac, destination_mac, destination_domain,
-  source_port, destination_port (also lists)
+- source_ip, destination_ip, source_mac, destination_mac, destination_domain
+  (also lists)
 
 Volumes are large (10,000+ flows per hour; the console caps totals at 10,000),
 so every tool caps the time window (7 days), page size (500) and pages
@@ -47,6 +52,8 @@ ACTIONS = ("allowed", "blocked")
 RISKS = ("low", "medium", "high")
 TALKER_KEYS = ("source", "destination", "service", "domain")
 _PROTOCOL_RE = re.compile(r"[A-Za-z0-9_]{1,20}")
+_SERVICE_RE = re.compile(r"[A-Z0-9_]{1,40}")
+MAX_PORTS = 20
 
 
 def _now_ms() -> int:
@@ -87,6 +94,42 @@ def _validate_filters(
         if not isinstance(search, str) or not search.strip() or len(search) > 100:
             return {}, validation_error("search must be a non-empty string of at most 100 characters.")
         body["search_text"] = search.strip()
+    return body, None
+
+
+def _port_list(value: Any, field: str) -> tuple[list[str], dict | None]:
+    """Validate a port or list of ports; return them as strings, deduplicated in order."""
+    ports = value if isinstance(value, list) else [value]
+    if not ports or len(ports) > MAX_PORTS:
+        return [], validation_error(f"{field} takes 1 to {MAX_PORTS} ports.")
+    for port in ports:
+        if isinstance(port, bool) or not isinstance(port, int) or not 1 <= port <= 65535:
+            return [], validation_error(
+                f"{field} must be a port number (1 to 65535) or a list of them; "
+                "ranges are not supported by the console."
+            )
+    return list(dict.fromkeys(str(p) for p in ports)), None
+
+
+def _match_filters(
+    source_port: Any, destination_port: Any, service: Any,
+) -> tuple[dict, dict | None]:
+    """Return (port and service filter body fragment, validation error or None)."""
+    body: dict[str, Any] = {}
+    for value, field in ((source_port, "source_port"), (destination_port, "destination_port")):
+        if value is None:
+            continue
+        ports, err = _port_list(value, field)
+        if err:
+            return {}, err
+        body[field] = ports
+    if service is not None:
+        name = service.strip().upper() if isinstance(service, str) else None
+        if not name or not _SERVICE_RE.fullmatch(name):
+            return {}, validation_error(
+                "service must be one console service name such as NTP, DNS or HTTPS."
+            )
+        body["service"] = [name]
     return body, None
 
 
@@ -196,6 +239,9 @@ async def list_traffic_flows(
     action: str | None = None,
     risk: str | None = None,
     search: str | None = None,
+    source_port: int | list[int] | None = None,
+    destination_port: int | list[int] | None = None,
+    service: str | None = None,
 ) -> dict:
     """List recent network traffic flows (per-connection records), sorted newest first.
 
@@ -206,13 +252,20 @@ async def list_traffic_flows(
     default 60). `limit` caps flows returned (1 to 500, default 50). Optional
     filters: direction (local|outgoing|incoming), protocol (TCP, UDP, ICMP...),
     action (allowed|blocked), risk (low|medium|high), search (free text over
-    IPs, device names, domains, services). Each flow is compact with bytes_*,
-    source and destination.
+    IPs, device names and domains; it does not match service names),
+    source_port / destination_port (a port or a list of up to 20, matched as
+    any of them; no ranges), service (a console service name such as NTP,
+    DNS or HTTPS). Each flow is compact with bytes_*, source and destination.
+
+    The console can write flows to its log well after they happen, so an
+    empty recent window does not prove no traffic: widen `minutes` to check.
     """
     err = _check_window_limit(minutes, limit)
     filters, ferr = _validate_filters(direction, protocol, action, risk, search)
-    if err or ferr:
-        return err or ferr
+    match, merr = _match_filters(source_port, destination_port, service)
+    if err or ferr or merr:
+        return err or ferr or merr
+    filters = {**filters, **match}
     flows, total, _ = await _scan(client, minutes, filters, limit)
     return _flows_result(flows, total, minutes, limit)
 
@@ -286,11 +339,12 @@ async def get_top_talkers(
 async def filter_flows_by_app(
     client: UnifiClient, app_name: str, minutes: int = 60, limit: int = 50
 ) -> dict:
-    """Find traffic flows for an application, service or domain by name.
+    """Find traffic flows for an application or domain by name.
 
-    `app_name` is a free-text search (for example "google", "netflix", "dns",
-    "youtube.com") matched by the console against service, domains, and
-    device names. Window `minutes` (1 to 10080, default 60); `limit` 1 to 500.
+    `app_name` is a free-text search (for example "google", "netflix",
+    "youtube.com") matched by the console against domains, IPs and device
+    names. It does not match service names such as DNS or NTP; use
+    list_traffic_flows(service=...) for those. Window `minutes` (1 to 10080, default 60); `limit` 1 to 500.
     """
     err = _check_window_limit(minutes, limit)
     filters, ferr = _validate_filters(None, None, None, None, app_name)

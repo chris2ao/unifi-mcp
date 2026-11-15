@@ -77,6 +77,35 @@ async def test_list_traffic_flows_filters_sent(mock_client):
 
 @respx.mock
 @pytest.mark.asyncio
+async def test_list_traffic_flows_port_and_service_filters_sent(mock_client):
+    route = respx.post(URL).mock(return_value=httpx.Response(200, json=fixture()))
+    await tf.list_traffic_flows(
+        mock_client, destination_port=123, source_port=[123, 5353], service=" ntp "
+    )
+    body = body_of(route)
+    assert body["destination_port"] == ["123"]
+    assert body["source_port"] == ["123", "5353"]
+    assert body["service"] == ["NTP"]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_list_traffic_flows_port_filter_dedupes_and_keeps_order(mock_client):
+    route = respx.post(URL).mock(return_value=httpx.Response(200, json=fixture()))
+    await tf.list_traffic_flows(mock_client, destination_port=[443, 53, 443])
+    assert body_of(route)["destination_port"] == ["443", "53"]
+
+
+@respx.mock
+@pytest.mark.asyncio
+async def test_list_traffic_flows_no_port_or_service_keys_by_default(mock_client):
+    route = respx.post(URL).mock(return_value=httpx.Response(200, json=fixture()))
+    await tf.list_traffic_flows(mock_client)
+    assert not {"source_port", "destination_port", "service"} & set(body_of(route))
+
+
+@respx.mock
+@pytest.mark.asyncio
 async def test_list_traffic_flows_empty(mock_client):
     respx.post(URL).mock(return_value=httpx.Response(
         200, json={"data": [], "total_element_count": 0, "has_next": False}))
@@ -108,6 +137,11 @@ async def test_list_traffic_flows_bare_list_shape(mock_client):
     {"limit": 0}, {"limit": 501},
     {"direction": "sideways"}, {"action": "maybe"}, {"risk": "critical"},
     {"protocol": "TCP;DROP"}, {"protocol": ""}, {"search": "   "}, {"search": "x" * 101},
+    {"destination_port": 0}, {"destination_port": 65536}, {"destination_port": "123"},
+    {"destination_port": True}, {"destination_port": []}, {"destination_port": "120-125"},
+    {"source_port": [123, "x"]}, {"source_port": [123, None]}, {"source_port": list(range(1, 22))},
+    {"service": ""}, {"service": "   "}, {"service": "NTP;DROP"}, {"service": "x" * 41},
+    {"service": ["NTP"]},
 ])
 async def test_list_traffic_flows_validation(mock_client, kwargs):
     result = await tf.list_traffic_flows(mock_client, **kwargs)
