@@ -14,6 +14,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Notes
 
 - Migration: none. Calls that passed before still pass, except an exclude rule without `translated_ip`, which the console never accepted.
+- Verified live on Network 11.0.99: two DNAT exclude rules, a DNAT and a masquerade were created, enabled and read back `verified: true`, and traffic behaved as intended (redirected NTP answered through the hairpin; the excluded hosts still reached their upstream). Exclude rules with a lower `rule_index` are applied before the broader DNAT.
 
 ## [0.11.0] - 2026-11-14
 

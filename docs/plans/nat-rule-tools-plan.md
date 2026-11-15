@@ -246,11 +246,13 @@ git commit -m "feat: CLAUD-929 validate and build NAT rule bodies"
 
 ### Task 7: release v0.11.0
 
-- [ ] **Step 1:** `uv run pytest -q` and `gen_tool_docs.py --check` pass. Push the branch with `-u`, open a PR titled `release v0.11.0: NAT rule tools` (body: summary, live verification evidence, test plan), wait for CI green.
-- [ ] **Step 2:** Merge the PR (merge commit, matching `Merge PR #10: release v0.10.0`), tag `v0.11.0` on the merge commit, push the tag, and create the GitHub release from the CHANGELOG section.
-- [ ] **Step 3:** `git checkout main && git pull`; the owner reconnects `/mcp`; `get_server_info` shows version 0.11.0.
+- [x] **Step 1:** `uv run pytest -q` and `gen_tool_docs.py --check` pass. Push the branch with `-u`, open a PR titled `release v0.11.0: NAT rule tools` (body: summary, live verification evidence, test plan), wait for CI green.
+- [x] **Step 2:** Merge the PR (merge commit, matching `Merge PR #10: release v0.10.0`), tag `v0.11.0` on the merge commit, push the tag, and create the GitHub release from the CHANGELOG section.
+- [x] **Step 3:** `git checkout main && git pull`; the owner reconnects `/mcp`; `get_server_info` shows version 0.11.0.
 
 ### Task 8: the LAN NTP redirect  `critical`
+
+Changed: the first exclude-rule create failed with HTTP 400 (`NatRuleInvalidParameters`: "SNAT/DNAT must have an address/port translation"). The console requires `ip_address` on an excluded DNAT or SNAT and does not apply it. Fixed in v0.11.1 (`fix/claud-929-exclude-translation`); the exclude rules carry the resolver-a address as their unused translation. Step 5 was not needed: lower `rule_index` exclude rules apply first.
 
 Rules on network Default (`in_interface`/`out_interface` = the Default `networkconf` id from `list_networks`), created disabled first, in this order:
 
@@ -261,15 +263,15 @@ Rules on network Default (`in_interface`/`out_interface` = the Default `networkc
 | next+2 | `NTP redirect to resolver-a` | DNAT | protocol `udp`, destination `{"port": "123"}`, translated `192.0.2.53:123` |
 | next+3 | `NTP redirect hairpin` | MASQUERADE | protocol `udp`, source `{"address": "192.0.2.0/24"}`, destination `{"address": "192.0.2.53", "port": "123"}` |
 
-- [ ] **Step 1:** Baseline (already recorded 2026-11-14 19:1x): from the MacBook `sntp -t 3 192.0.2.1` times out; `sntp -t 3 time.google.com` answers.
-- [ ] **Step 2:** Show the owner the four previews in one message and get approval; then confirm each with `enabled=False`, each `verified: True`.
-- [ ] **Step 3:** Enable the masquerade and the two exclude rules, then the DNAT last (`toggle_nat_rule`).
-- [ ] **Step 4: Verify.** Each check must pass:
+- [x] **Step 1:** Baseline (already recorded 2026-11-14 19:1x): from the MacBook `sntp -t 3 192.0.2.1` times out; `sntp -t 3 time.google.com` answers.
+- [x] **Step 2:** Show the owner the four previews in one message and get approval; then confirm each with `enabled=False`, each `verified: True`.
+- [x] **Step 3:** Enable the masquerade and the two exclude rules, then the DNAT last (`toggle_nat_rule`).
+- [x] **Step 4: Verify.** Each check must pass:
   - MacBook: `sntp -t 3 192.0.2.1` answers (proves DNAT plus hairpin); `sntp -t 3 time.google.com` answers.
   - resolver-a: `pihole-FTL ntp time.cloudflare.com` gives 8/8 with round-trip delay above 2 ms (a reply from itself would be under 1 ms; proves its exclude rule).
   - resolver-b: the same command, delay above 2 ms (proves its exclude rule; a redirect to Main would be about 1 ms).
-- [ ] **Step 5: If a Pi check fails**, the exclude rules are evaluated in the other order: swap the indexes with `update_nat_rule(rule_index=...)` so the excludes sit after or before the DNAT as needed, and re-run Step 4. If any check still fails, roll back with `toggle_nat_rule(<DNAT id>, enabled=False)` and report.
-- [ ] **Step 6:** Record the outcome: Jira comment on CLAUD-929 naming the rule ids and the probe output, then move it to Done; update the pihole-control memory and Pi-hole config docs per the owner.
+- [x] **Step 5: If a Pi check fails**, the exclude rules are evaluated in the other order: swap the indexes with `update_nat_rule(rule_index=...)` so the excludes sit after or before the DNAT as needed, and re-run Step 4. If any check still fails, roll back with `toggle_nat_rule(<DNAT id>, enabled=False)` and report.
+- [x] **Step 6:** Record the outcome: Jira comment on CLAUD-929 naming the rule ids and the probe output, then move it to Done; update the pihole-control memory and Pi-hole config docs per the owner.
 
 ### Wave 3 checkpoint
 
