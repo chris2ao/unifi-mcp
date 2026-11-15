@@ -1,0 +1,32 @@
+[
+  {
+    "_id": "00000000-0000-0000-0000-0000000000f1",
+    "description": "unifi-mcp smoke test (delete me)",
+    "destination_filter": {
+      "filter_type": "ADDRESS_AND_PORT",
+      "firewall_group_ids": [],
+      "invert_address": false,
+      "invert_port": false,
+      "port": "65000"
+    },
+    "enabled": false,
+    "exclude": false,
+    "in_interface": "00000000-0000-0000-0000-0000000000d1",
+    "ip_address": "192.0.2.53",
+    "ip_version": "IPV4",
+    "is_predefined": false,
+    "logging": false,
+    "port": "65000",
+    "pppoe_use_base_interface": false,
+    "protocol": "udp",
+    "rule_index": 0,
+    "setting_preference": "manual",
+    "source_filter": {
+      "filter_type": "NONE",
+      "firewall_group_ids": [],
+      "invert_address": false,
+      "invert_port": false
+    },
+    "type": "DNAT"
+  }
+]

@@ -5,6 +5,28 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.0] - 2026-11-14
+
+NAT rule tools: create, update, toggle and delete gateway NAT rules (DNAT, SNAT, masquerade and exclude rules), enough to redirect hard-coded NTP or DNS to a local server. Network goes from 166 tools to 171 (228 in total with everything loaded).
+
+### Added
+
+- `get_nat_rule`, `create_nat_rule`, `update_nat_rule`, `toggle_nat_rule`, `delete_nat_rule` (group `security`, new module `nat_rules`; the four writes are Tier 2) on the internal v2 endpoint `/proxy/network/v2/api/site/{site}/nat`. Arguments are typed and validated in the new `nat_body.py`: interfaces per rule type, address family against `ip_version`, subnets with host bits set rejected, single translated ports and filter port ranges, one filter family per side, and no port matching with protocol `all`. Every interface, network and firewall group id is checked to exist. Create appends at the next free `rule_index` unless one is given.
+- Every confirmed NAT write reads the rule list back and returns `verified`, with `mismatches` when the console saved different values or still holds a field the new body leaves out. An HTTP 200 with an empty body is reported as `executed: false`.
+- Each NAT write must be confirmed with the exact arguments of a live preview (`PREVIEW_REQUIRED` otherwise) and returns `CONFLICT` when it would now send something other than what the preview showed. Results never include the raw controller response; controller strings in NAT output are stripped of control characters and capped. Addresses must be plain ASCII (IPv6 zone ids are rejected, since `ipaddress` keeps any text after `%`).
+- Update merges only the fields passed into the stored rule and sends the stored record back with the new values. Its preview lists `changes`, including removed fields. Changing `nat_type` drops the old interface and translation; `exclude=True` drops the translation. Update, toggle and delete refuse predefined rules and return `CONFLICT` when the rule changed after its preview.
+
+### Changed
+
+- `list_nat_rules` also returns `exclude`, `logging`, `rule_index` and `is_predefined`, and passes every string field (descriptions, addresses, interfaces, filter values) through `clean_text`.
+
+### Notes
+
+- Migration: no breaking changes. Tools and fields are only added.
+- Verified live on a UDM Pro (UniFi OS 6.0.17, Network 11.0.99) with a throwaway rule: create (disabled), update, toggle on and off, and delete, each read back with `verified: true`, and the NAT list empty afterwards. The console accepts the full stored record on PUT and fills in its own filter defaults (`firewall_group_ids: []`, false invert flags), `pppoe_use_base_interface` and `setting_preference: manual`; it omits `out_interface` on DNAT rules. Rule ids are UUIDs. The captured shape is pinned in `tests/fixtures/nat_rules_live.json`.
+- The update preview's `changes` treats those console-filled filter defaults as unchanged, so only real edits are listed (found during the live run).
+- Upgrade: pull or update the plugin, then reconnect the `unifi` MCP server. Rollback: check out or reinstall tag `v0.10.0`. Nothing is stored on disk, so rolling back needs no data step. NAT rules created with these tools stay on the console after a rollback; manage them in the UniFi UI.
+
 ## [0.10.0] - 2026-11-12
 
 UniFi Network 11 support. Tested against UniFi OS 6.0.17, Network 11.0.99 and Protect 7.3.74 on a UDM Pro with read-only live checks (77 of 79 no-argument read tools, and every new or changed tool, ran against the console with writes blocked). Network goes from 160 tools to 166 (223 in total with everything loaded). Coverage is now counted by HTTP method and path: Network 82.2% (60 of 73), Protect 91.9% (68 of 74), Site Manager 64.3% (9 of 14). See [docs/COMPATIBILITY.md](docs/COMPATIBILITY.md) for the feature matrix, sources and gaps.

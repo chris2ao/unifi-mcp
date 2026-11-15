@@ -1,6 +1,6 @@
 # Compatibility and feature matrix
 
-Research date: 2026-11-12. Applies to unifi-mcp 0.10.0.
+Research date: 2026-11-12. Applies to unifi-mcp 0.11.0 (0.11.0 adds the NAT rule tools on 2026-11-14; nothing else in this document changed).
 
 ## Versions
 
@@ -76,7 +76,7 @@ Remaining Network gaps are the 13 write operations in the deferred rows. Remaini
 
 These have no public contract and can change with any Network release. The tools fail soft with an error naming the endpoint.
 
-- v2: `aggregated-dashboard`, `speedtest`, `wan/load-balancing/status`, `traffic-flows`, `system-log/all` and `/count`, `firewall-policies`, `acl-rules`, `content-filtering`, `vpn/connections`, `wireguard/users`
+- v2: `nat` (read by `list_nat_rules`; created, updated and deleted by the NAT rule tools since 0.11.0), `aggregated-dashboard`, `speedtest`, `wan/load-balancing/status`, `traffic-flows`, `system-log/all` and `/count`, `firewall-policies`, `acl-rules`, `content-filtering`, `vpn/connections`, `wireguard/users`
 - legacy: `stat/device`, `stat/sta`, `stat/sysinfo`, `stat/health`, `stat/report`, `stat/rogueap`, `stat/stadpi`, `cmd/devmgr`, `cmd/backup`, `rest/networkconf`, `rest/wlanconf`, `rest/setting`, `rest/dynamicdns`, `rest/scheduletask` and the other `rest/` collections used by the legacy tools
 
 All of them answered on 11.0.99 during the read-only sweep, except `stat/report`, which answered with no rows.
@@ -87,6 +87,7 @@ All of them answered on 11.0.99 during the read-only sweep, except `stat/report`
 |---|---|
 | Mocked unit and contract tests | 1597 passing, 97.5% line coverage. New: Network 11 shapes, `reportFlowEnabled` through create, update and toggle (including the preview drift guard), dashboard layouts and window validation, empty report note, `tx_power_mode`, the six new read tools (validation, pagination, errors, no passphrase in output), method-aware coverage scanner, Protect subscription channel allow-list |
 | Live, read-only | Write-blocking sweep (GET plus known read-only report POSTs) of every no-argument read tool and of every new or changed tool on Network 11.0.99 and Protect 7.3.74, including a check that no WiFi passphrase appears in any output |
+| NAT rule tools (0.11.0) | 1722 unit tests passing, 98% line coverage. Body schema from ubiquiti-community/unifi-api `cmd/fields/custom/Nat.json` and terraform-provider-unifi `unifi/nat_resource.go`. Verified live on Network 11.0.99 with a throwaway rule: create, update, toggle on and off, delete, each read back as saved; PUT of the full stored record is accepted |
 | Not verified live | Every write tool, the `report_flow` argument on create and update, ACL rule detail (no rules on the test console), the Protect 7.4 operations |
 
 ## Permissions

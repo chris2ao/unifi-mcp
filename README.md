@@ -10,7 +10,7 @@ An MCP server for UniFi Network and Protect, built on FastMCP and httpx. API-key
 
 ## What this is
 
-A 223-tool MCP server (8 always-loaded tools, 166 Network, 40 Protect and 9 optional Site Manager cloud tools, with everything loaded) for UniFi Network and Protect, with an opt-in set of read-only UniFi Site Manager (cloud) tools. Tools load on demand per product and per group, so the token budget stays small until you need a capability. The full per-tool list with tiers is in [docs/TOOLS.md](docs/TOOLS.md). All mutations require a two-step preview-confirm flow before any API call is made. Authentication for the Network and Protect tools uses the X-API-Key header with a local-console key. The optional cloud tools use a separate Site Manager key (see [Site Manager cloud tools](#site-manager-cloud-tools-optional)).
+A 228-tool MCP server (8 always-loaded tools, 171 Network, 40 Protect and 9 optional Site Manager cloud tools, with everything loaded) for UniFi Network and Protect, with an opt-in set of read-only UniFi Site Manager (cloud) tools. Tools load on demand per product and per group, so the token budget stays small until you need a capability. The full per-tool list with tiers is in [docs/TOOLS.md](docs/TOOLS.md). All mutations require a two-step preview-confirm flow before any API call is made. Authentication for the Network and Protect tools uses the X-API-Key header with a local-console key. The optional cloud tools use a separate Site Manager key (see [Site Manager cloud tools](#site-manager-cloud-tools-optional)).
 
 ## Table of Contents
 
@@ -179,7 +179,7 @@ For the Network and Protect tools, this server targets the Network application a
 flowchart LR
     CC[Claude Code session] -->|stdio| MCP[FastMCP server<br/>python -m unifi_mcp]
     MCP --> UT[8 utility tools<br/>always loaded]
-    UT -->|load_network_tools| NET[166 Network tools<br/>core 80, security 64, insights 22]
+    UT -->|load_network_tools| NET[171 Network tools<br/>core 80, security 69, insights 22]
     UT -->|load_protect_tools| PROT[40 Protect tools<br/>cameras 23, devices 8, security 9]
     UT -->|load_access_tools| ACC[Access tools<br/>0 on this console]
     UT -->|load_cloud_tools| CLD[9 Site Manager tools<br/>optional, read-only]
@@ -209,9 +209,9 @@ These 8 tools are always available from session start. They do not require a loa
 | `get_server_info` | Server version, loaded products and groups, console firmware versions and drift from the tested versions |
 | `get_mutation_log` | Audit log of confirmed Tier 2 changes in this session |
 
-### Network Tools (166, loaded via `load_network_tools`)
+### Network Tools (171, loaded via `load_network_tools`)
 
-Groups: `core` (80 tools), `security` (64), `insights` (22). The full per-tool list is in [docs/TOOLS.md](docs/TOOLS.md); parameters and return shapes are in [docs/API.md](docs/API.md).
+Groups: `core` (80 tools), `security` (69), `insights` (22). The full per-tool list is in [docs/TOOLS.md](docs/TOOLS.md); parameters and return shapes are in [docs/API.md](docs/API.md).
 
 | Category | Count | Tools |
 |---|---|---|
@@ -226,6 +226,7 @@ Groups: `core` (80 tools), `security` (64), `insights` (22). The full per-tool l
 | WiFi/SSID | 8 | list, create, update, delete, stats, toggle, official-API broadcast list and detail (passphrases never returned) |
 | VPN | 2 | list servers, list clients |
 | Port Forwarding | 4 | list, create, update, delete |
+| NAT Rules | 5 | get, create, update, toggle, delete (DNAT, SNAT, masquerade, exclude rules); list is `list_nat_rules` under Routing |
 | DPI | 2 | site-wide stats, per-client breakdown |
 | Hotspot | 6 | list vouchers, create voucher, list vouchers (official API), get voucher, delete voucher, delete vouchers by filter |
 | MAC ACL | 7 | list filter rules, add filter, delete filter, get ACL rule order, reorder ACL rules, official-API ACL rule list and detail |
@@ -241,7 +242,7 @@ Groups: `core` (80 tools), `security` (64), `insights` (22). The full per-tool l
 | Backups | 3 | list, create, restore |
 | Webhooks | 3 | stubs, return PRODUCT_UNAVAILABLE (endpoint removed in Network 10.6) |
 | System | 5 | sysinfo, health, alarms, events, event counts |
-| **Total** | **166** | |
+| **Total** | **171** | |
 
 **Note on Traffic Flows:** The flow tools use the v2 query endpoint verified on Network 10.6.106 and 11.0.99. The console returns flows unordered and caps totals at 10,000, so results are a sample (sorted newest first) and the aggregate tools report `truncated`.
 
@@ -296,10 +297,10 @@ Rate limits (HTTP 429) surface as a `CONNECTION_ERROR` with `rate_limited: true`
 |---|---|
 | Startup (utility only) | 8 |
 | After `load_network_tools(groups=["core"])` | 88 |
-| After `load_network_tools` (all groups) | 174 |
-| After `load_protect_tools` (all groups) | 214 (on a console with Protect) |
-| After `load_access_tools` | 214 (no Access hardware on test console) |
-| After `load_cloud_tools` | 223 (with `UNIFI_CLOUD_API_KEY` set) |
+| After `load_network_tools` (all groups) | 179 |
+| After `load_protect_tools` (all groups) | 219 (on a console with Protect) |
+| After `load_access_tools` | 219 (no Access hardware on test console) |
+| After `load_cloud_tools` | 228 (with `UNIFI_CLOUD_API_KEY` set) |
 
 ### OpenAPI Coverage
 
@@ -332,9 +333,9 @@ sequenceDiagram
     User->>MCP: load_network_tools()
     MCP->>Probe: GET /proxy/network/api/s/default/stat/sysinfo
     Probe-->>MCP: 200 OK (product present)
-    MCP->>Tools: Import 32 modules, register 166 tools
+    MCP->>Tools: Import 33 tool modules, register 171 tools
     Tools-->>MCP: TOOLS lists collected
-    MCP-->>User: "Registered 166 network tools"
+    MCP-->>User: "Registered 171 network tools"
     Note over User,Tools: Subsequent calls are no-ops
 ```
 
@@ -401,6 +402,7 @@ Read operations (list, get, stats, topology, traffic flows, insights, live event
 | Clients | block, unblock, authorize guest, unauthorize guest |
 | WiFi/SSID | create, update, delete |
 | Port Forwarding | create, update, delete |
+| NAT Rules | create, update, toggle, delete |
 | RADIUS | create, update, delete |
 | Port Profiles | create, update, delete |
 | Backups | restore |
@@ -536,7 +538,7 @@ src/unifi_mcp/
   cloud_loader.py     # load_cloud_tools registration
   tools/
     _registry.py      # Auto-discovery, tool groups, per-product loading
-    network/          # 32 modules, 166 tools
+    network/          # 33 tool modules, 171 tools
     cloud/            # 9 Site Manager tools (loaded by load_cloud_tools)
     protect/          # 40 tools (2 stubs): cameras, controls, views, accessories, events, alarm
     access/           # Stubs, 0 tools on current console

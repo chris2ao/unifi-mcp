@@ -1096,7 +1096,63 @@ Module: `tools/network/routing.py` (group `insights`, all Tier 1). These read in
 ### list_nat_rules
 
 - **Parameters:** None
-- **Returns:** `list[dict]` of NAT rules, or an error dict
+- **Returns:** `list[dict]` with id, description, enabled, exclude, logging, rule_index, is_predefined, type, protocol, ip_address, port, in_interface, out_interface, source_filter, destination_filter, ip_version, or an error dict. Write tools for these rules are under [NAT Rules](#nat-rules-5-tools).
+
+---
+
+## NAT Rules (5 tools)
+
+Module: `tools/network/nat_rules.py` (group `security`; bodies built and validated in `nat_body.py`). Internal v2 endpoint `/proxy/network/v2/api/site/{site}/nat` (Network 9.0+, no public contract; there is no GET by id). List rules with `list_nat_rules` (group `insights`), which returns `id`, `exclude`, `logging`, `rule_index` and `is_predefined` for each rule.
+
+Rules apply in `rule_index` order. An `exclude=True` rule takes matching traffic out of translation, so an exclude rule placed before a broader rule carves out an exception. On a single subnet, a DNAT to a local host also needs a MASQUERADE rule on that network for the return path, or the host replies directly and the client drops the reply.
+
+Every confirmed write reads the rule list back. The result has `verified: true`, or `verified: false` with `mismatches` (`{field: {"intended", "saved"}}`) when the console saved something else, including a field the new body leaves out that the console still holds. An HTTP 200 with an empty body is reported as `executed: false`. Predefined rules (`is_predefined: true`) cannot be updated, toggled or deleted. Each write must be confirmed with exactly the arguments of a live preview (else `PREVIEW_REQUIRED`), and the confirm must be about to send exactly what that preview showed; if the rules changed in between so that the request would differ (including the `rule_index` a create appends at), it returns `CONFLICT`. Results carry the formatted rule, never the raw controller response, and controller strings are stripped of control characters and capped. Addresses must be plain ASCII IPs or CIDRs; IPv6 zone ids (`%eth0`) are rejected.
+
+### get_nat_rule
+
+Get one NAT rule by id, read fresh (uncached).
+
+- **Parameters:** `rule_id: str`
+- **Returns:** `dict` (the rule, as `list_nat_rules` formats it), or a `NOT_FOUND` error
+
+### create_nat_rule **(Tier 2)**
+
+Create a NAT rule. Requires confirm=True after previewing. The preview returns the exact request `body`.
+
+- `nat_type`: `DNAT` matches traffic arriving on `in_interface` and rewrites its destination to `translated_ip` (and `translated_port`). `SNAT` matches traffic leaving on `out_interface` and rewrites its source to `translated_ip`. `MASQUERADE` matches traffic leaving on `out_interface` and rewrites its source to that interface's address (no `translated_ip` or `translated_port`). Interfaces are network ids from `list_networks`; every interface, network and firewall group id is checked to exist.
+- `protocol`: `all` (default), `tcp`, `udp`, `tcp_udp`. Matching or translating a port needs one of the last three. `ip_version`: `IPV4` (default) or `IPV6`; every address must match it.
+- `source` / `destination`: `{"address": "192.0.2.10" or "192.0.2.0/24", "port": "123" or "8000-8010", "invert_address": bool, "invert_port": bool}`, or `{"network_id": id}`, or `{"firewall_group_ids": [ids]}`. One family per side; omit to match everything. Subnets with host bits set are rejected.
+- `translated_port` is a single port (the console rejects ranges there).
+- `exclude=True`: matching traffic is not translated; omit `translated_ip` and `translated_port`.
+- `rule_index`: omit to append after the existing rules; a taken index is rejected.
+
+- **Parameters:** `description: str`, `nat_type: str`, `protocol: str = "all"`, `ip_version: str = "IPV4"`, `in_interface: str | None = None`, `out_interface: str | None = None`, `translated_ip: str | None = None`, `translated_port: str | int | None = None`, `source: dict | None = None`, `destination: dict | None = None`, `exclude: bool = False`, `enabled: bool = True`, `logging: bool = False`, `rule_index: int | None = None`, `confirm: bool = False`
+- **Returns:** `dict` (preview with `body`, or `executed`, `verified`, `rule` and any `mismatches`)
+
+### update_nat_rule **(Tier 2)**
+
+Update a user-defined NAT rule. Only the fields you pass change; the merged rule is validated like `create_nat_rule`, and the stored record is sent back with the new values. The preview returns `before`, `after` and `changes` (`{field: {"from", "to"}}`, including removed fields).
+
+- A given `source` or `destination` replaces that whole filter. `clear_source` / `clear_destination` match everything again; `clear_translated_port` drops the port rewrite. Passing a side and its clear flag together is an error.
+- Changing `nat_type` drops the old interface and translation, so pass the new ones. Setting `exclude=True` drops the translation.
+- `rule_index` moves the rule; an index used by another rule is rejected.
+
+- **Parameters:** `rule_id: str`, `description: str | None = None`, `nat_type: str | None = None`, `protocol: str | None = None`, `ip_version: str | None = None`, `in_interface: str | None = None`, `out_interface: str | None = None`, `translated_ip: str | None = None`, `translated_port: str | int | None = None`, `source: dict | None = None`, `destination: dict | None = None`, `clear_source: bool = False`, `clear_destination: bool = False`, `clear_translated_port: bool = False`, `exclude: bool | None = None`, `enabled: bool | None = None`, `logging: bool | None = None`, `rule_index: int | None = None`, `confirm: bool = False`
+- **Returns:** `dict` (preview with `before`, `after`, `changes`, or `executed`, `verified`, `rule` and any `mismatches`)
+
+### toggle_nat_rule **(Tier 2)**
+
+Enable or disable a user-defined NAT rule without changing anything else.
+
+- **Parameters:** `rule_id: str`, `enabled: bool`, `confirm: bool = False`
+- **Returns:** `dict` (preview, or `executed`, `verified`, `rule`)
+
+### delete_nat_rule **(Tier 2)**
+
+Delete a user-defined NAT rule. Irreversible. The preview shows the rule; after confirm the list is read back to check the rule is gone.
+
+- **Parameters:** `rule_id: str`, `confirm: bool = False`
+- **Returns:** `dict` (preview with `rule`, or `executed` and `verified`)
 
 ---
 

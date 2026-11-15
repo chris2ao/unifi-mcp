@@ -196,6 +196,28 @@ async def test_list_nat_rules(mock_client):
 
 
 @respx.mock
+async def test_list_nat_rules_reports_write_fields(mock_client):
+    from unifi_mcp.tools.network.routing import list_nat_rules
+
+    respx.get(NAT).mock(return_value=httpx.Response(200, json=load_fixture("nat_rules.json")))
+    dnat, masquerade, predefined = await list_nat_rules(mock_client)
+    assert (dnat["exclude"], dnat["logging"], dnat["rule_index"], dnat["is_predefined"]) == (False, False, 1, False)
+    assert (masquerade["logging"], masquerade["rule_index"]) == (True, 2)
+    assert (predefined["rule_index"], predefined["is_predefined"]) == (0, True)
+
+
+@respx.mock
+async def test_list_nat_rules_defaults_and_clean_description(mock_client):
+    from unifi_mcp.tools.network.routing import list_nat_rules
+
+    payload = [{"_id": "x1", "description": "evil\nline\x07", "type": "DNAT"}]
+    respx.get(NAT).mock(return_value=httpx.Response(200, json=payload))
+    (rule,) = await list_nat_rules(mock_client)
+    assert rule["description"] == "evilline"
+    assert (rule["exclude"], rule["logging"], rule["rule_index"], rule["is_predefined"]) == (False, False, None, False)
+
+
+@respx.mock
 async def test_list_nat_rules_empty(mock_client):
     from unifi_mcp.tools.network.routing import list_nat_rules
 
