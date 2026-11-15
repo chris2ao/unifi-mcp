@@ -10,6 +10,8 @@
 
 **Execution:** inline
 
+**Status:** Done 2026-11-14. Released as v0.11.0 (PR #11) and v0.11.1 (PR #12); the LAN NTP redirect is live and verified.
+
 **Architecture:** A pure module `nat_body.py` validates tool arguments and builds the v2 NAT rule body (like `zbf_policy_filters.py`). A tool module `nat_rules.py` (group `security`) does the HTTP work against `/proxy/network/v2/api/site/{site}/nat`: preview-confirm, CONFLICT when a rule changed after its preview, GET-merge-PUT for updates, and a read-back after every write that reports whether the saved rule matches the intent. `list_nat_rules` stays in `routing.py` (group `insights`); its formatter gains the fields the write tools need.
 
 **Tech stack:** Python 3.12, uv, httpx, pytest + pytest-asyncio + respx, FastMCP.
@@ -275,9 +277,9 @@ Rules on network Default (`in_interface`/`out_interface` = the Default `networkc
 
 ### Wave 3 checkpoint
 
-- [ ] Done-when checks verified with the command output quoted in the status line
-- [ ] No further review (code reviewed in Wave 2; Task 8 is configuration verified by probes)
-- [ ] Status line sent to the owner
+- [x] Done-when checks verified with the command output quoted in the status line
+- [x] No further review (code reviewed in Wave 2; Task 8 is configuration verified by probes)
+- [x] Status line sent to the owner
 
 ## Open Questions
 
