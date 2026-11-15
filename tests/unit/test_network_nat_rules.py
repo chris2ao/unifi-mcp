@@ -715,3 +715,44 @@ async def test_formatted_rule_cleans_controller_strings(mock_client):
     assert rule["ip_address"] == "192.0.2.20run this"
     assert "\x07" not in rule["destination_filter"]["address"]
     assert len(rule["destination_filter"]["address"]) <= 128
+
+
+# --- live shape (Network 11.0.99, captured 2026-11-14, ids and address replaced) ----
+
+LIVE_DEFAULT_ID = "00000000-0000-0000-0000-0000000000d1"
+LIVE_RULE_ID = "00000000-0000-0000-0000-0000000000f1"
+
+
+def test_live_shape_round_trips_and_verifies():
+    from unifi_mcp.tools.network.nat_body import build_rule, rule_to_args
+    from unifi_mcp.tools.network.nat_rules import _absent_keys, _mismatches
+
+    (stored,) = load_fixture("nat_rules_live.json")
+    built = build_rule(**rule_to_args(stored))
+    assert built.get("error") is not True, built
+    assert _mismatches(built, stored, _absent_keys(built)) == {}
+
+
+@respx.mock
+async def test_update_preview_on_live_shape_lists_only_real_changes(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    Console(load_fixture("nat_rules_live.json")).mount()
+    respx.get(NETWORKS).mock(return_value=httpx.Response(200, json={"data": [{"_id": LIVE_DEFAULT_ID}]}))
+    result = await update_nat_rule(mock_client, LIVE_RULE_ID, description="renamed")
+    assert result["changes"] == {
+        "description": {"from": "unifi-mcp smoke test (delete me)", "to": "renamed"},
+    }
+
+
+@respx.mock
+async def test_update_preview_still_lists_real_filter_changes(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    Console(load_fixture("nat_rules_live.json")).mount()
+    respx.get(NETWORKS).mock(return_value=httpx.Response(200, json={"data": [{"_id": LIVE_DEFAULT_ID}]}))
+    result = await update_nat_rule(mock_client, LIVE_RULE_ID, destination={"port": "65001", "invert_port": True})
+    assert result["changes"] == {
+        "destination_filter.port": {"from": "65000", "to": "65001"},
+        "destination_filter.invert_port": {"from": False, "to": True},
+    }

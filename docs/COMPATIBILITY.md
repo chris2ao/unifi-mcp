@@ -87,7 +87,7 @@ All of them answered on 11.0.99 during the read-only sweep, except `stat/report`
 |---|---|
 | Mocked unit and contract tests | 1597 passing, 97.5% line coverage. New: Network 11 shapes, `reportFlowEnabled` through create, update and toggle (including the preview drift guard), dashboard layouts and window validation, empty report note, `tx_power_mode`, the six new read tools (validation, pagination, errors, no passphrase in output), method-aware coverage scanner, Protect subscription channel allow-list |
 | Live, read-only | Write-blocking sweep (GET plus known read-only report POSTs) of every no-argument read tool and of every new or changed tool on Network 11.0.99 and Protect 7.3.74, including a check that no WiFi passphrase appears in any output |
-| NAT rule tools (0.11.0) | 1722 unit tests passing, 98% line coverage. Body schema from ubiquiti-community/unifi-api `cmd/fields/custom/Nat.json` and terraform-provider-unifi `unifi/nat_resource.go`. Live verification: pending |
+| NAT rule tools (0.11.0) | 1722 unit tests passing, 98% line coverage. Body schema from ubiquiti-community/unifi-api `cmd/fields/custom/Nat.json` and terraform-provider-unifi `unifi/nat_resource.go`. Verified live on Network 11.0.99 with a throwaway rule: create, update, toggle on and off, delete, each read back as saved; PUT of the full stored record is accepted |
 | Not verified live | Every write tool, the `report_flow` argument on create and update, ACL rule detail (no rules on the test console), the Protect 7.4 operations |
 
 ## Permissions

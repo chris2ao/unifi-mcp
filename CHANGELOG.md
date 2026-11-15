@@ -23,7 +23,8 @@ NAT rule tools: create, update, toggle and delete gateway NAT rules (DNAT, SNAT,
 ### Notes
 
 - Migration: no breaking changes. Tools and fields are only added.
-- Live verification: pending.
+- Verified live on a UDM Pro (UniFi OS 6.0.17, Network 11.0.99) with a throwaway rule: create (disabled), update, toggle on and off, and delete, each read back with `verified: true`, and the NAT list empty afterwards. The console accepts the full stored record on PUT and fills in its own filter defaults (`firewall_group_ids: []`, false invert flags), `pppoe_use_base_interface` and `setting_preference: manual`; it omits `out_interface` on DNAT rules. Rule ids are UUIDs. The captured shape is pinned in `tests/fixtures/nat_rules_live.json`.
+- The update preview's `changes` treats those console-filled filter defaults as unchanged, so only real edits are listed (found during the live run).
 - Upgrade: pull or update the plugin, then reconnect the `unifi` MCP server. Rollback: check out or reinstall tag `v0.10.0`. Nothing is stored on disk, so rolling back needs no data step. NAT rules created with these tools stay on the console after a rollback; manage them in the UniFi UI.
 
 ## [0.10.0] - 2026-11-12

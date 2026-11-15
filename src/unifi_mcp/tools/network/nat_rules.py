@@ -315,6 +315,11 @@ async def _load_editable(client: UnifiClient, rule_id: str, verb: str) -> tuple[
     return rule, None
 
 
+def _neutral(value):
+    """Filter defaults the console fills in ([], False, '') mean the same as an absent key."""
+    return None if value is None or value is False or value == "" or value == [] else value
+
+
 def _changes(before: dict, after: dict, keys) -> dict:
     """What the update changes, including removed fields and filter sub-keys."""
     out: dict = {}
@@ -323,8 +328,8 @@ def _changes(before: dict, after: dict, keys) -> dict:
         if isinstance(old, dict) or isinstance(new, dict):
             old, new = old if isinstance(old, dict) else {}, new if isinstance(new, dict) else {}
             for sub in sorted(set(old) | set(new)):
-                if _present(old.get(sub)) != _present(new.get(sub)):
-                    out[f"{key}.{sub}"] = {"from": _present(old.get(sub)), "to": _present(new.get(sub))}
+                if _neutral(old.get(sub)) != _neutral(new.get(sub)):
+                    out[f"{key}.{sub}"] = {"from": old.get(sub), "to": new.get(sub)}
         elif _present(old) != _present(new):
             out[key] = {"from": _present(old), "to": _present(new)}
     return out
