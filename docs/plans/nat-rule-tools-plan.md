@@ -71,7 +71,7 @@
   - `build_rule(*, description, nat_type, protocol, ip_version, in_interface, out_interface, translated_ip, translated_port, source, destination, exclude, enabled, logging, rule_index) -> dict` returns the body or a validation error.
   - `filter_ports(body: dict) -> bool` (whether either filter or the translated port names a port), used by the protocol check.
 
-- [ ] **Step 1: Write the failing tests**
+- [x] **Step 1: Write the failing tests**
 
 ```python
 def test_dnat_ntp_redirect_body():
@@ -102,21 +102,21 @@ def test_masquerade_body_uses_out_interface():
 Error tests, one each, asserting `is_error(result)` and a message naming the field:
 `test_dnat_requires_in_interface`, `test_dnat_rejects_out_interface`, `test_masquerade_rejects_translated_ip`, `test_snat_requires_translated_ip_unless_exclude`, `test_exclude_rejects_translated_ip`, `test_port_requires_protocol_other_than_all` (filter port and translated port, Edge Case 2), `test_translated_port_rejects_range` (`"8080-8090"`), `test_filter_port_accepts_range` (`"8080-8090"` ok, `"9000-8000"` and `"0"` and `"65536"` rejected), `test_cidr_with_host_bits_rejected` (`"192.0.2.5/24"`, message contains `192.0.2.0/24`, Edge Case 3), `test_address_family_must_match_ip_version` (`"fd00::1"` with `IPV4`), `test_filter_families_are_exclusive` (`address` + `network_id`), `test_unknown_filter_key_rejected`, `test_invert_without_value_rejected`, `test_description_rejects_empty_and_control_chars`, `test_rule_index_must_be_non_negative_int` (`-1`, `True`, `"2"`), `test_enum_fields_validated` (bad `nat_type`, `protocol`, `ip_version`).
 
-- [ ] **Step 2: Run them and confirm they fail**
+- [x] **Step 2: Run them and confirm they fail**
 
 Run: `uv run pytest tests/unit/test_network_nat_body.py -q`
 Expected: FAIL with `ModuleNotFoundError: unifi_mcp.tools.network.nat_body`
 
-- [ ] **Step 3: Implement `nat_body.py`**
+- [x] **Step 3: Implement `nat_body.py`**
 
 Use `ipaddress.ip_address` for single addresses and `ipaddress.ip_network(strict=True)` for CIDRs; reuse `validation.validation_error`, `check_id` and `check_enum`. Ports are strings in the body; accept `int` input and convert. Descriptions are at most 128 characters. The module has no `TOOLS`, so give it `TOOLS = []`, `GROUP = "security"` and `TIER2_TOOLS = {}` if the registry requires them for every module under `tools/network` (check `test_registry.py`; `zbf_policy_filters.py` shows the precedent).
 
-- [ ] **Step 4: Run them and confirm they pass**
+- [x] **Step 4: Run them and confirm they pass**
 
 Run: `uv run pytest tests/unit/test_network_nat_body.py -q`
 Expected: all pass
 
-- [ ] **Step 5: Commit**
+- [x] **Step 5: Commit**
 
 ```bash
 git add src/unifi_mcp/tools/network/nat_body.py tests/unit/test_network_nat_body.py
@@ -133,18 +133,18 @@ git commit -m "feat: CLAUD-929 validate and build NAT rule bodies"
 **Interfaces:**
 - Produces: `_format_nat_rule(r: dict) -> dict` (still in `routing.py`) also returns `exclude` (default False), `logging` (default False), `rule_index` (default None) and `is_predefined` (default False); `description` goes through `clean_text`. `nat_rules.py` imports it.
 
-- [ ] **Step 1: Write the failing test** `test_list_nat_rules_reports_write_fields`: mock GET `NAT` with `nat_rules.json` (three rules: a user DNAT with `rule_index` 1, a user MASQUERADE with `rule_index` 2 and `exclude: false`, a predefined rule with `is_predefined: true`), assert those four fields on each.
-- [ ] **Step 2: Run it and confirm it fails** (`KeyError: 'exclude'`).
-- [ ] **Step 3: Add the four fields to `_format_nat_rule`.**
-- [ ] **Step 4: Run `uv run pytest tests/unit/test_network_routing.py -q` and confirm it passes.**
-- [ ] **Step 5: Commit** `feat: CLAUD-929 report exclude, logging, index and predefined on NAT rules`
+- [x] **Step 1: Write the failing test** `test_list_nat_rules_reports_write_fields`: mock GET `NAT` with `nat_rules.json` (three rules: a user DNAT with `rule_index` 1, a user MASQUERADE with `rule_index` 2 and `exclude: false`, a predefined rule with `is_predefined: true`), assert those four fields on each.
+- [x] **Step 2: Run it and confirm it fails** (`KeyError: 'exclude'`).
+- [x] **Step 3: Add the four fields to `_format_nat_rule`.**
+- [x] **Step 4: Run `uv run pytest tests/unit/test_network_routing.py -q` and confirm it passes.**
+- [x] **Step 5: Commit** `feat: CLAUD-929 report exclude, logging, index and predefined on NAT rules`
 
 ### Wave 1 checkpoint
 
-- [ ] `uv run pytest -q` passes
-- [ ] Done-when checks verified
-- [ ] No review (pure code, covered by the Wave 2 review of the combined diff)
-- [ ] Status line sent to the owner
+- [x] `uv run pytest -q` passes
+- [x] Done-when checks verified
+- [x] No review (pure code, covered by the Wave 2 review of the combined diff)
+- [x] Status line sent to the owner
 
 ---
 
