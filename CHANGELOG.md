@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [Unreleased]
+
+### Added
+
+- `list_traffic_flows` takes `source_port` and `destination_port` (a port or a list of up to 20, matched as any of them) and `service` (a console service name such as NTP, DNS or HTTPS, upper-cased before sending). The console filters on them server-side. It rejects port ranges and unknown service names with a 400, so ranges are refused before the request.
+
+### Fixed
+
+- The `list_traffic_flows` and `filter_flows_by_app` docstrings said free-text search matches service names. It does not ("NTP", "ntp" and "HTTPS" all return nothing on Network 11.0.99), so a search for a service looked like no traffic. The docstrings now point to the `service` filter, and `list_traffic_flows` notes that the console can write flows to its log long after they happen, so an empty recent window does not prove there was no traffic.
+
 ## [0.11.1] - 2026-11-14
 
 ### Fixed

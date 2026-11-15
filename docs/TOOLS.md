@@ -135,7 +135,7 @@ Loaded by `load_network_tools`.
 | `get_site_settings` | 1 | Get site settings: without section, list the section keys; with section, return it. |
 | `list_traffic_flows` | 1 | List recent network traffic flows (per-connection records), sorted newest first. |
 | `get_top_talkers` | 1 | Rank top traffic talkers by bytes over the last `minutes` (default 60). |
-| `filter_flows_by_app` | 1 | Find traffic flows for an application, service or domain by name. |
+| `filter_flows_by_app` | 1 | Find traffic flows for an application or domain by name. |
 | `filter_flows_by_client` | 1 | Find traffic flows to or from one client, by IP address or MAC address. |
 | `get_blocked_flows` | 1 | List flows the firewall or threat engine blocked, sorted newest first (a sample). |
 | `get_flow_summary` | 1 | Summarize traffic over the last `minutes` (1 to 10080, default 60). |
