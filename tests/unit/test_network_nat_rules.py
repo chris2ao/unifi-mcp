@@ -390,14 +390,14 @@ async def test_update_type_change_drops_type_specific_fields(mock_client):
 
 
 @respx.mock
-async def test_update_exclude_drops_translation(mock_client):
+async def test_update_exclude_keeps_translation(mock_client):
     from unifi_mcp.tools.network.nat_rules import update_nat_rule
 
     console = Console().mount()
     result = await confirmed(update_nat_rule, mock_client, DNAT_ID, exclude=True)
     assert result["verified"] is True
     (put,) = console.puts
-    assert put["exclude"] is True and "ip_address" not in put and "port" not in put
+    assert put["exclude"] is True and put["ip_address"] == "192.0.2.20" and put["port"] == "443"
 
 
 @respx.mock
@@ -619,15 +619,15 @@ async def test_update_ignores_existing_duplicate_index_unless_changed(mock_clien
 
 
 @respx.mock
-async def test_update_stored_exclude_rule_with_leftover_address(mock_client):
+async def test_update_stored_exclude_rule_keeps_its_translation(mock_client):
     from unifi_mcp.tools.network.nat_rules import update_nat_rule
 
     records = rules()
-    records[0].update(exclude=True, port="")  # ip_address 192.0.2.20 left behind
+    records[0].update(exclude=True, port="")
     console = Console(records).mount()
     result = await confirmed(update_nat_rule, mock_client, DNAT_ID, enabled=False)
-    assert result["executed"] is True
-    assert "ip_address" not in console.puts[0] and "port" not in console.puts[0]
+    assert result["executed"] is True and result["verified"] is True
+    assert console.puts[0]["ip_address"] == "192.0.2.20" and "port" not in console.puts[0]
 
 
 # --- security review fixes ---------------------------------------------------------

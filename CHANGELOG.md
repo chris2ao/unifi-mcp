@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [0.11.1] - 2026-11-14
+
+### Fixed
+
+- `create_nat_rule` and `update_nat_rule` could not make exclude rules. They refused a translated address on `exclude=True`, but Network 11.0.99 rejects a DNAT or SNAT without one, even when excluded (`NatRuleInvalidParameters`: "SNAT/DNAT must have an address/port translation"); the console stores it and does not apply it. DNAT and SNAT now always need `translated_ip`, `update_nat_rule(exclude=True)` keeps the translation, and stored exclude rules keep theirs when rebuilt. Found when creating the first exclude rule on a live console.
+
+### Notes
+
+- Migration: none. Calls that passed before still pass, except an exclude rule without `translated_ip`, which the console never accepted.
+
 ## [0.11.0] - 2026-11-14
 
 NAT rule tools: create, update, toggle and delete gateway NAT rules (DNAT, SNAT, masquerade and exclude rules), enough to redirect hard-coded NTP or DNS to a local server. Network goes from 166 tools to 171 (228 in total with everything loaded).

@@ -57,11 +57,12 @@ def test_dnat_ntp_redirect_body():
     }
 
 
-def test_exclude_rule_has_no_translation():
-    body = rule(exclude=True, translated_ip=None, translated_port=None,
-                source={"address": "192.0.2.53"})
+def test_exclude_rule_keeps_translation():
+    # The console rejects a DNAT or SNAT without a translation even when exclude
+    # is set (NatRuleInvalidParameters, Network 11.0.99); it is stored, not applied.
+    body = rule(exclude=True, translated_port=None, source={"address": "192.0.2.53"})
     assert body["exclude"] is True
-    assert "ip_address" not in body and "port" not in body
+    assert body["ip_address"] == "192.0.2.53" and "port" not in body
     assert body["source_filter"] == {
         "filter_type": "ADDRESS_AND_PORT", "address": "192.0.2.53",
         "invert_address": False, "invert_port": False,
@@ -143,18 +144,19 @@ def test_masquerade_rejects_translated_port():
                       translated_ip=None), "translated_port")
 
 
-def test_dnat_requires_translated_ip_unless_exclude():
-    assert_error(rule(translated_ip=None), "translated_ip")
+@pytest.mark.parametrize("exclude", [False, True])
+def test_dnat_requires_translated_ip(exclude):
+    assert_error(rule(translated_ip=None, exclude=exclude), "translated_ip")
 
 
-def test_snat_requires_translated_ip_unless_exclude():
+@pytest.mark.parametrize("exclude", [False, True])
+def test_snat_requires_translated_ip(exclude):
     assert_error(rule(nat_type="SNAT", in_interface=None, out_interface=DEFAULT_ID,
-                      translated_ip=None, translated_port=None), "translated_ip")
+                      translated_ip=None, translated_port=None, exclude=exclude), "translated_ip")
 
 
-def test_exclude_rejects_translated_ip_and_port():
-    assert_error(rule(exclude=True, translated_port=None), "exclude", "translated_ip")
-    assert_error(rule(exclude=True, translated_ip=None), "exclude", "translated_port")
+def test_exclude_rule_accepts_translated_port():
+    assert rule(exclude=True)["port"] == "123"
 
 
 def test_translated_ip_must_be_single_address():
@@ -290,7 +292,7 @@ def test_rule_to_args_round_trips_built_bodies():
 
     bodies = [
         rule(),
-        rule(exclude=True, translated_ip=None, translated_port=None,
+        rule(exclude=True, translated_port=None,
              source={"address": "192.0.2.0/24", "invert_address": True}),
         rule(nat_type="MASQUERADE", in_interface=None, out_interface=DEFAULT_ID,
              translated_ip=None, translated_port=None,
@@ -338,12 +340,12 @@ def test_invert_flags_alone_match_everything():
         "filter_type": "NONE"}
 
 
-def test_rule_to_args_drops_translation_on_exclude_rules():
+def test_rule_to_args_keeps_translation_on_exclude_rules():
     from unifi_mcp.tools.network.nat_body import rule_to_args
 
     args = rule_to_args({"description": "d", "type": "DNAT", "in_interface": DEFAULT_ID, "exclude": True,
                          "ip_address": "192.0.2.53", "port": "123"})
-    assert args["translated_ip"] is None and args["translated_port"] is None
+    assert (args["translated_ip"], args["translated_port"]) == ("192.0.2.53", "123")
 
 
 @pytest.mark.parametrize("address", [

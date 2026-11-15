@@ -13,7 +13,9 @@ and terraform-provider-unifi ``unifi/nat_resource.go``:
 - ``ip_address`` / ``port`` are the translated address and port. MASQUERADE
   uses the outgoing interface's address and takes neither. ``port`` is a
   single port; ranges are only accepted in filters.
-- ``exclude`` takes matching traffic out of translation (no ``ip_address``).
+- ``exclude`` takes matching traffic out of translation. The console still
+  requires a translation on an excluded DNAT or SNAT (it is stored, not
+  applied), so ``ip_address`` stays required.
 - ``source_filter`` / ``destination_filter`` match by address and/or port,
   by network, or by firewall groups.
 """
@@ -224,20 +226,20 @@ def _check_interfaces(nat_type: str, in_interface: Any, out_interface: Any) -> d
 
 
 def _check_translation(args: dict) -> dict | None:
-    nat_type, exclude = args["nat_type"], args["exclude"]
+    nat_type = args["nat_type"]
     ip, port = args["translated_ip"], args["translated_port"]
     if nat_type == "MASQUERADE":
         for field, value in (("translated_ip", ip), ("translated_port", port)):
             if value is not None:
                 return validation_error(f"MASQUERADE rules use the outgoing interface's address; omit {field}.")
         return None
-    if exclude:
-        for field, value in (("translated_ip", ip), ("translated_port", port)):
-            if value is not None:
-                return validation_error(f"An exclude rule skips translation; omit {field}.")
-        return None
     if ip is None:
-        return validation_error(f"{nat_type} rules need translated_ip (or exclude=True).")
+        # Network 11.0.99 rejects a DNAT or SNAT without one, even with exclude=True
+        # (NatRuleInvalidParameters: "SNAT/DNAT must have an address/port translation").
+        return validation_error(
+            f"{nat_type} rules need translated_ip, also when exclude=True (the console requires it "
+            "and does not apply it to excluded traffic)."
+        )
     return None
 
 
@@ -327,7 +329,6 @@ def rule_to_args(rule: dict) -> dict:
     if error:
         return error
     nat_type = rule.get("type")
-    exclude = rule.get("exclude", False)
     return {
         "description": rule.get("description"),
         "nat_type": nat_type,
@@ -335,12 +336,11 @@ def rule_to_args(rule: dict) -> dict:
         "ip_version": rule.get("ip_version", "IPV4"),
         "in_interface": _present(rule.get("in_interface")) if nat_type == "DNAT" else None,
         "out_interface": _present(rule.get("out_interface")) if nat_type != "DNAT" else None,
-        # An exclude rule never translates; ignore any address or port left on it.
-        "translated_ip": None if exclude is True else _present(rule.get("ip_address")),
-        "translated_port": None if exclude is True else _present(rule.get("port")),
+        "translated_ip": _present(rule.get("ip_address")),
+        "translated_port": _present(rule.get("port")),
         "source": source,
         "destination": destination,
-        "exclude": exclude,
+        "exclude": rule.get("exclude", False),
         "enabled": rule.get("enabled", True),
         "logging": rule.get("logging", False),
         "rule_index": rule.get("rule_index"),

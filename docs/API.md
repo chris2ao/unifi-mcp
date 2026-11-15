@@ -1123,7 +1123,7 @@ Create a NAT rule. Requires confirm=True after previewing. The preview returns t
 - `protocol`: `all` (default), `tcp`, `udp`, `tcp_udp`. Matching or translating a port needs one of the last three. `ip_version`: `IPV4` (default) or `IPV6`; every address must match it.
 - `source` / `destination`: `{"address": "192.0.2.10" or "192.0.2.0/24", "port": "123" or "8000-8010", "invert_address": bool, "invert_port": bool}`, or `{"network_id": id}`, or `{"firewall_group_ids": [ids]}`. One family per side; omit to match everything. Subnets with host bits set are rejected.
 - `translated_port` is a single port (the console rejects ranges there).
-- `exclude=True`: matching traffic is not translated; omit `translated_ip` and `translated_port`.
+- `exclude=True`: matching traffic is not translated. DNAT and SNAT rules still need `translated_ip`: the console rejects them without one (`NatRuleInvalidParameters`) and does not apply it to excluded traffic.
 - `rule_index`: omit to append after the existing rules; a taken index is rejected.
 
 - **Parameters:** `description: str`, `nat_type: str`, `protocol: str = "all"`, `ip_version: str = "IPV4"`, `in_interface: str | None = None`, `out_interface: str | None = None`, `translated_ip: str | None = None`, `translated_port: str | int | None = None`, `source: dict | None = None`, `destination: dict | None = None`, `exclude: bool = False`, `enabled: bool = True`, `logging: bool = False`, `rule_index: int | None = None`, `confirm: bool = False`
@@ -1134,7 +1134,7 @@ Create a NAT rule. Requires confirm=True after previewing. The preview returns t
 Update a user-defined NAT rule. Only the fields you pass change; the merged rule is validated like `create_nat_rule`, and the stored record is sent back with the new values. The preview returns `before`, `after` and `changes` (`{field: {"from", "to"}}`, including removed fields).
 
 - A given `source` or `destination` replaces that whole filter. `clear_source` / `clear_destination` match everything again; `clear_translated_port` drops the port rewrite. Passing a side and its clear flag together is an error.
-- Changing `nat_type` drops the old interface and translation, so pass the new ones. Setting `exclude=True` drops the translation.
+- Changing `nat_type` drops the old interface and translation, so pass the new ones. Setting `exclude=True` keeps the translation (the console requires one).
 - `rule_index` moves the rule; an index used by another rule is rejected.
 
 - **Parameters:** `rule_id: str`, `description: str | None = None`, `nat_type: str | None = None`, `protocol: str | None = None`, `ip_version: str | None = None`, `in_interface: str | None = None`, `out_interface: str | None = None`, `translated_ip: str | None = None`, `translated_port: str | int | None = None`, `source: dict | None = None`, `destination: dict | None = None`, `clear_source: bool = False`, `clear_destination: bool = False`, `clear_translated_port: bool = False`, `exclude: bool | None = None`, `enabled: bool | None = None`, `logging: bool | None = None`, `rule_index: int | None = None`, `confirm: bool = False`
