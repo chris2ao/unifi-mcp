@@ -179,6 +179,8 @@ def _address_port_filter(side: str, spec: dict, ip_version: str) -> dict:
         if is_error(port):
             return port
         out["port"] = port
+    if "address" not in out and "port" not in out:
+        return dict(_NONE_FILTER)
     out["invert_address"] = spec.get("invert_address", False)
     out["invert_port"] = spec.get("invert_port", False)
     return out
@@ -318,6 +320,7 @@ def rule_to_args(rule: dict) -> dict:
     if error:
         return error
     nat_type = rule.get("type")
+    exclude = rule.get("exclude", False)
     return {
         "description": rule.get("description"),
         "nat_type": nat_type,
@@ -325,11 +328,12 @@ def rule_to_args(rule: dict) -> dict:
         "ip_version": rule.get("ip_version", "IPV4"),
         "in_interface": _present(rule.get("in_interface")) if nat_type == "DNAT" else None,
         "out_interface": _present(rule.get("out_interface")) if nat_type != "DNAT" else None,
-        "translated_ip": _present(rule.get("ip_address")),
-        "translated_port": _present(rule.get("port")),
+        # An exclude rule never translates; ignore any address or port left on it.
+        "translated_ip": None if exclude is True else _present(rule.get("ip_address")),
+        "translated_port": None if exclude is True else _present(rule.get("port")),
         "source": source,
         "destination": destination,
-        "exclude": rule.get("exclude", False),
+        "exclude": exclude,
         "enabled": rule.get("enabled", True),
         "logging": rule.get("logging", False),
         "rule_index": rule.get("rule_index"),

@@ -24,7 +24,7 @@ import json
 import time
 
 from unifi_mcp.auth.client import UnifiClient
-from unifi_mcp.tools.network.nat_body import build_rule, is_error, rule_to_args
+from unifi_mcp.tools.network.nat_body import _present, build_rule, is_error, rule_to_args
 from unifi_mcp.tools.network.routing import NAT_PATH, _format_nat_rule
 from unifi_mcp.tools.network.zbf_official import _executed, _preview
 from unifi_mcp.validation import check_id, validation_error
@@ -42,6 +42,9 @@ _CACHE = "routing"
 _NETWORKS = "/proxy/network/api/s/{site}/rest/networkconf"
 _GROUPS = "/proxy/network/api/s/{site}/rest/firewallgroup"
 _PREVIEW_TTL_SECONDS = 600.0
+# Body keys that only some rule types (or non-exclude rules) carry. When a body
+# leaves one out, the saved rule must not have it either.
+_TYPE_SPECIFIC = ("in_interface", "out_interface", "ip_address", "port")
 _IMPACT = (
     "Changes how the gateway translates matching traffic as soon as the rule is saved "
     "enabled. A wrong DNAT or masquerade can cut devices off from the service it matches."
@@ -133,8 +136,13 @@ def _changed_since_preview(tool: str, rule_id: str, rule: dict) -> dict | None:
 
 # --- verification -------------------------------------------------------------
 
-def _mismatches(intended: dict, saved: dict) -> dict:
-    out: dict = {}
+def _absent_keys(body: dict) -> tuple[str, ...]:
+    return tuple(k for k in _TYPE_SPECIFIC if k not in body)
+
+
+def _mismatches(intended: dict, saved: dict, absent: tuple[str, ...] = ()) -> dict:
+    """Keys whose saved value differs from the intended one, plus absent keys the console still holds."""
+    out: dict = {k: {"intended": None, "saved": saved[k]} for k in absent if _present(saved.get(k)) is not None}
     for key, want in intended.items():
         have = saved.get(key)
         if isinstance(want, dict):
@@ -162,8 +170,9 @@ def _locate(rules: list[dict], rule_id: str | None, description: str) -> dict | 
     return same[0] if len(same) == 1 else None
 
 
-async def _verify(client: UnifiClient, rule_id: str | None, intended: dict) -> dict:
-    """Read the rule back and compare it with the body that was sent."""
+async def _verify(client: UnifiClient, rule_id: str | None, intended: dict,
+                  absent: tuple[str, ...] = ()) -> dict:
+    """Read the rule back and compare it with what was sent; ``absent`` keys must be gone."""
     rule = _locate(await _fetch_rules(client), rule_id, intended.get("description", ""))
     if rule is None:
         return {
@@ -171,7 +180,7 @@ async def _verify(client: UnifiClient, rule_id: str | None, intended: dict) -> d
             "message": "The write returned success but the rule was not found when read back. "
                        "Check list_nat_rules.",
         }
-    mismatches = _mismatches(intended, rule)
+    mismatches = _mismatches(intended, rule, absent)
     out = {"rule": _format_nat_rule(rule), "verified": not mismatches}
     if mismatches:
         out["mismatches"] = mismatches
@@ -261,12 +270,10 @@ async def create_nat_rule(
     result = _executed("create_nat_rule", response)
     if not result["executed"]:
         return result
-    return {**result, **await _verify(client, _saved_id(response), body)}
+    return {**result, **await _verify(client, _saved_id(response), body, _absent_keys(body))}
 
 
 # --- existing rules -------------------------------------------------------------
-
-_TYPE_SPECIFIC = ("in_interface", "out_interface", "ip_address", "port")
 
 
 async def _load_editable(client: UnifiClient, rule_id: str, verb: str) -> tuple[dict | None, dict | None]:
@@ -285,17 +292,29 @@ async def _load_editable(client: UnifiClient, rule_id: str, verb: str) -> tuple[
     return rule, None
 
 
-def _changes(before: dict, after: dict) -> dict:
-    return {k: {"from": v["saved"], "to": v["intended"]} for k, v in _mismatches(after, before).items()}
+def _changes(before: dict, after: dict, keys) -> dict:
+    """What the update changes, including removed fields and filter sub-keys."""
+    out: dict = {}
+    for key in keys:
+        old, new = before.get(key), after.get(key)
+        if isinstance(old, dict) or isinstance(new, dict):
+            old, new = old if isinstance(old, dict) else {}, new if isinstance(new, dict) else {}
+            for sub in sorted(set(old) | set(new)):
+                if _present(old.get(sub)) != _present(new.get(sub)):
+                    out[f"{key}.{sub}"] = {"from": _present(old.get(sub)), "to": _present(new.get(sub))}
+        elif _present(old) != _present(new):
+            out[key] = {"from": _present(old), "to": _present(new)}
+    return out
 
 
-async def _put(client: UnifiClient, tool: str, rule_id: str, record: dict, intended: dict) -> dict:
+async def _put(client: UnifiClient, tool: str, rule_id: str, record: dict, intended: dict,
+               absent: tuple[str, ...] = ()) -> dict:
     response = await client.put(f"{NAT_PATH}/{rule_id}", json=record)
     client.invalidate_cache(_CACHE)
     result = _executed(tool, response, rule_id=rule_id)
     if not result["executed"]:
         return result
-    return {**result, **await _verify(client, rule_id, intended)}
+    return {**result, **await _verify(client, rule_id, intended, absent)}
 
 
 def _merge_args(current: dict, given: dict, clears: dict) -> dict:
@@ -379,16 +398,18 @@ async def update_nat_rule(
     current, error = await _load_editable(client, rule_id, "updated")
     if error:
         return error
-    return await _apply_update(client, rule_id, current, _merge_args(current, given, clears), confirm)
+    moved = rule_index if rule_index is not None and rule_index != current.get("rule_index") else None
+    return await _apply_update(client, rule_id, current, _merge_args(current, given, clears), moved, confirm)
 
 
-async def _apply_update(client: UnifiClient, rule_id: str, current: dict, args: dict, confirm: bool) -> dict:
+async def _apply_update(client: UnifiClient, rule_id: str, current: dict, args: dict,
+                        moved_to: int | None, confirm: bool) -> dict:
     if is_error(args):
         return args
     body = build_rule(**args)
     if is_error(body):
         return body
-    error = _check_index_free(body.get("rule_index"), rule_id, await _fetch_rules(client))
+    error = _check_index_free(moved_to, rule_id, await _fetch_rules(client))
     error = error or await _check_references(client, body)
     if error:
         return error
@@ -398,12 +419,12 @@ async def _apply_update(client: UnifiClient, rule_id: str, current: dict, args: 
         return _preview(
             "update_nat_rule", f"Will update NAT rule {rule_id}. Call again with confirm=True to execute.",
             _IMPACT, rule_id=rule_id, before=_format_nat_rule(current), after=_format_nat_rule(record),
-            changes=_changes(current, body),
+            changes=_changes(current, record, sorted(set(body) | set(_TYPE_SPECIFIC))),
         )
     conflict = _changed_since_preview("update_nat_rule", rule_id, current)
     if conflict:
         return conflict
-    return await _put(client, "update_nat_rule", rule_id, record, body)
+    return await _put(client, "update_nat_rule", rule_id, record, body, _absent_keys(body))
 
 
 async def toggle_nat_rule(client: UnifiClient, rule_id: str, enabled: bool, confirm: bool = False) -> dict:

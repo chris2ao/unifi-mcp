@@ -562,3 +562,53 @@ def test_preview_entries_expire(monkeypatch):
     now[0] += nat_rules._PREVIEW_TTL_SECONDS + 1
     nat_rules._remember_preview("toggle_nat_rule", "new", {"a": 1})
     assert ("toggle_nat_rule", "old") not in nat_rules._previewed
+
+
+# --- review fixes (MEDIUM 1-3) ---------------------------------------------------
+
+@respx.mock
+async def test_update_unverified_when_cleared_port_survives(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    console = Console().mount()
+    respx.put(url__regex=rf"{NAT}/.+").mock(side_effect=lambda r: (
+        console.edit(DNAT_ID, **{**json.loads(r.content), "port": "443"}),
+        httpx.Response(200, json=json.loads(r.content)))[1])
+    result = await update_nat_rule(mock_client, DNAT_ID, clear_translated_port=True, confirm=True)
+    assert result["verified"] is False
+    assert result["mismatches"] == {"port": {"intended": None, "saved": "443"}}
+
+
+@respx.mock
+async def test_update_preview_changes_list_removed_fields(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    Console().mount()
+    result = await update_nat_rule(mock_client, DNAT_ID, clear_translated_port=True, clear_destination=True)
+    assert result["changes"]["port"] == {"from": "443", "to": None}
+    assert result["changes"]["destination_filter.port"] == {"from": "8443", "to": None}
+    assert result["changes"]["destination_filter.filter_type"] == {"from": "ADDRESS_AND_PORT", "to": "NONE"}
+
+
+@respx.mock
+async def test_update_ignores_existing_duplicate_index_unless_changed(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    records = rules()
+    records[1]["rule_index"] = 1  # the console already holds two rules at index 1
+    Console(records).mount()
+    assert (await update_nat_rule(mock_client, MASQ_ID, description="Renamed"))["preview"] is True
+    result = await update_nat_rule(mock_client, MASQ_ID, rule_index=0)
+    assert result["category"] == "VALIDATION_ERROR" and "rule_index 0" in result["message"]
+
+
+@respx.mock
+async def test_update_stored_exclude_rule_with_leftover_address(mock_client):
+    from unifi_mcp.tools.network.nat_rules import update_nat_rule
+
+    records = rules()
+    records[0].update(exclude=True, port="")  # ip_address 192.0.2.20 left behind
+    console = Console(records).mount()
+    result = await update_nat_rule(mock_client, DNAT_ID, enabled=False, confirm=True)
+    assert result["executed"] is True
+    assert "ip_address" not in console.puts[0] and "port" not in console.puts[0]

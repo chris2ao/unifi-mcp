@@ -331,3 +331,16 @@ def test_rule_to_args_rejects_unknown_filter_type():
     result = rule_to_args({"description": "d", "type": "DNAT",
                            "source_filter": {"filter_type": "IID_AND_PORT", "port": "80"}})
     assert_error(result, "IID_AND_PORT")
+
+
+def test_invert_flags_alone_match_everything():
+    assert build_filter("source", {"invert_address": False, "invert_port": False}, "IPV4") == {
+        "filter_type": "NONE"}
+
+
+def test_rule_to_args_drops_translation_on_exclude_rules():
+    from unifi_mcp.tools.network.nat_body import rule_to_args
+
+    args = rule_to_args({"description": "d", "type": "DNAT", "in_interface": DEFAULT_ID, "exclude": True,
+                         "ip_address": "192.0.2.53", "port": "123"})
+    assert args["translated_ip"] is None and args["translated_port"] is None
