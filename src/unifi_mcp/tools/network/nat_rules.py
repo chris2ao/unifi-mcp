@@ -43,7 +43,7 @@ _CACHE = "routing"
 _NETWORKS = "/proxy/network/api/s/{site}/rest/networkconf"
 _GROUPS = "/proxy/network/api/s/{site}/rest/firewallgroup"
 _DEFAULT_PREVIEW_TTL_SECONDS = 600.0
-# Body keys that only some rule types (or non-exclude rules) carry. When a body
+# Body keys that only some rule types carry. When a body
 # leaves one out, the saved rule must not have it either.
 _TYPE_SPECIFIC = ("in_interface", "out_interface", "ip_address", "port")
 _IMPACT = (
@@ -258,9 +258,10 @@ async def create_nat_rule(
     source / destination: {"address": IP or CIDR, "port": "123" or "8000-8010",
     "invert_address": bool, "invert_port": bool}, or {"network_id": id}, or
     {"firewall_group_ids": [ids]}; omit to match everything.
-    exclude=True makes an exception: matching traffic is not translated
-    (omit translated_ip/port). Rules apply in rule_index order; omit it to
-    append after the existing rules.
+    exclude=True makes an exception: matching traffic is not translated.
+    DNAT and SNAT still need translated_ip then (the console requires it).
+    Rules apply in rule_index order; omit it to append after the existing
+    rules.
     """
     params = _call_params(locals())
     body = build_rule(
@@ -362,8 +363,6 @@ def _merge_args(current: dict, given: dict, clears: dict) -> dict:
         return validation_error("Pass translated_port or clear_translated_port, not both.")
     if given["nat_type"] is not None and given["nat_type"] != current.get("type"):
         args.update(in_interface=None, out_interface=None, translated_ip=None, translated_port=None)
-    if given["exclude"] is True and given["translated_ip"] is None:
-        args.update(translated_ip=None, translated_port=None)
     args.update({k: v for k, v in given.items() if v is not None})
     for key in ("source", "destination", "translated_port"):
         if clears[f"clear_{key}"]:
@@ -414,7 +413,8 @@ async def update_nat_rule(
     A given source or destination replaces that whole filter; clear_source /
     clear_destination match everything again; clear_translated_port drops the
     port rewrite. Changing nat_type drops the old interface and translation, so
-    pass the new ones. Setting exclude=True drops the translation. The merged
+    pass the new ones. Setting exclude=True keeps the translation (the
+    console requires one; it is not applied to excluded traffic). The merged
     rule is validated like create_nat_rule. Refused with CONFLICT if the rule
     changed after the preview.
     """
