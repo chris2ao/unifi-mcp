@@ -172,6 +172,17 @@ async def list_traffic_routes(client: UnifiClient) -> list[dict] | dict:
     return await fail_soft(TRAFFIC_ROUTES_PATH, run)
 
 
+def _clean(value: Any) -> Any:
+    """Controller text is untrusted: strip control characters and cap strings, recursively."""
+    if isinstance(value, str):
+        return clean_text(value)
+    if isinstance(value, dict):
+        return {clean_text(k, 64): _clean(v) for k, v in value.items()}
+    if isinstance(value, list):
+        return [_clean(v) for v in value]
+    return value
+
+
 def _format_nat_rule(r: dict) -> dict:
     return {
         "id": r.get("_id") or r.get("id", ""),
@@ -181,15 +192,15 @@ def _format_nat_rule(r: dict) -> dict:
         "logging": r.get("logging", False),
         "rule_index": r.get("rule_index"),
         "is_predefined": r.get("is_predefined", False),
-        "type": r.get("type", ""),
-        "protocol": r.get("protocol", ""),
-        "ip_address": r.get("ip_address", ""),
-        "port": r.get("port", ""),
-        "in_interface": r.get("in_interface", ""),
-        "out_interface": r.get("out_interface", ""),
-        "source_filter": r.get("source_filter", {}),
-        "destination_filter": r.get("destination_filter", {}),
-        "ip_version": r.get("ip_version", ""),
+        "type": _clean(r.get("type", "")),
+        "protocol": _clean(r.get("protocol", "")),
+        "ip_address": _clean(r.get("ip_address", "")),
+        "port": _clean(r.get("port", "")),
+        "in_interface": _clean(r.get("in_interface", "")),
+        "out_interface": _clean(r.get("out_interface", "")),
+        "source_filter": _clean(r.get("source_filter", {})),
+        "destination_filter": _clean(r.get("destination_filter", {})),
+        "ip_version": _clean(r.get("ip_version", "")),
     }
 
 

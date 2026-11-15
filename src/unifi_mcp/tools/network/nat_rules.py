@@ -25,7 +25,8 @@ import time
 
 from unifi_mcp.auth.client import UnifiClient
 from unifi_mcp.tools.network.nat_body import _present, build_rule, is_error, rule_to_args
-from unifi_mcp.tools.network.routing import NAT_PATH, _format_nat_rule
+from unifi_mcp.safety import params_hash
+from unifi_mcp.tools.network.routing import NAT_PATH, _clean, _format_nat_rule
 from unifi_mcp.tools.network.zbf_official import _executed, _preview
 from unifi_mcp.validation import check_id, validation_error
 
@@ -41,7 +42,7 @@ TIER2_TOOLS = {
 _CACHE = "routing"
 _NETWORKS = "/proxy/network/api/s/{site}/rest/networkconf"
 _GROUPS = "/proxy/network/api/s/{site}/rest/firewallgroup"
-_PREVIEW_TTL_SECONDS = 600.0
+_DEFAULT_PREVIEW_TTL_SECONDS = 600.0
 # Body keys that only some rule types (or non-exclude rules) carry. When a body
 # leaves one out, the saved rule must not have it either.
 _TYPE_SPECIFIC = ("in_interface", "out_interface", "ip_address", "port")
@@ -50,9 +51,11 @@ _IMPACT = (
     "enabled. A wrong DNAT or masquerade can cut devices off from the service it matches."
 )
 
-# Fingerprint of each rule as it was when a preview was shown, keyed by
-# (tool, rule_id). Confirm compares against it so a rule edited after its
-# preview (in the UI or by another call) is not changed blindly.
+# What each preview would send, keyed by (tool, hash of the call parameters),
+# the same key the server's preview-confirm guard uses. A confirm must find its
+# own preview (else PREVIEW_REQUIRED) and must be about to send exactly what that
+# preview showed (else CONFLICT), so a rule or rule list changed after the
+# preview is never written blindly. In-process state, like the server's registry.
 _previewed: dict[tuple[str, str], tuple[str, float]] = {}
 
 
@@ -109,29 +112,43 @@ async def _check_references(client: UnifiClient, body: dict) -> dict | None:
 
 # --- preview bookkeeping ------------------------------------------------------
 
-def _fingerprint(rule: dict) -> str:
-    return hashlib.sha256(json.dumps(rule, sort_keys=True).encode()).hexdigest()
+def _fingerprint(payload: dict) -> str:
+    return hashlib.sha256(json.dumps(payload, sort_keys=True, default=str).encode()).hexdigest()
 
 
-def _remember_preview(tool: str, rule_id: str, rule: dict) -> None:
-    now = time.monotonic()
-    for key in [k for k, (_, seen) in _previewed.items() if now - seen > _PREVIEW_TTL_SECONDS]:
+def _call_params(values: dict) -> dict:
+    """A tool's arguments without the client and the confirm flag."""
+    return {k: v for k, v in values.items() if k not in ("client", "confirm")}
+
+
+def _ttl(client: UnifiClient) -> float:
+    config = getattr(client, "config", None)
+    return float(getattr(config, "unifi_preview_ttl_seconds", _DEFAULT_PREVIEW_TTL_SECONDS))
+
+
+def _remember_preview(client: UnifiClient, tool: str, params: dict, payload: dict) -> None:
+    now, ttl = time.monotonic(), _ttl(client)
+    for key in [k for k, (_, seen) in _previewed.items() if now - seen > ttl]:
         del _previewed[key]
-    _previewed[(tool, rule_id)] = (_fingerprint(rule), now)
+    _previewed[(tool, params_hash(params))] = (_fingerprint(payload), now)
 
 
-def _changed_since_preview(tool: str, rule_id: str, rule: dict) -> dict | None:
-    """CONFLICT error when the rule differs from what this tool's preview showed."""
-    entry = _previewed.pop((tool, rule_id), None)
-    if entry is None or entry[0] == _fingerprint(rule):
-        return None
-    return {
-        "error": True, "category": "CONFLICT", "rule_id": rule_id,
-        "message": (
-            f"NAT rule '{_format_nat_rule(rule)['description']}' changed after it was previewed. "
-            "Preview again to see the current rule before confirming."
-        ),
-    }
+def _check_preview(client: UnifiClient, tool: str, params: dict, payload: dict) -> dict | None:
+    """PREVIEW_REQUIRED without a live preview of this exact call; CONFLICT if it would now send something else."""
+    entry = _previewed.pop((tool, params_hash(params)), None)
+    if entry is None or time.monotonic() - entry[1] > _ttl(client):
+        return {
+            "error": True, "category": "PREVIEW_REQUIRED",
+            "message": f"No current preview of this exact {tool} call. Call it with confirm=False, "
+                       "check the result, then repeat the same arguments with confirm=True.",
+        }
+    if entry[0] != _fingerprint(payload):
+        return {
+            "error": True, "category": "CONFLICT",
+            "message": "The NAT rules changed after the preview, so this call would now send something "
+                       "different from what was previewed. Preview again before confirming.",
+        }
+    return None
 
 
 # --- verification -------------------------------------------------------------
@@ -142,16 +159,17 @@ def _absent_keys(body: dict) -> tuple[str, ...]:
 
 def _mismatches(intended: dict, saved: dict, absent: tuple[str, ...] = ()) -> dict:
     """Keys whose saved value differs from the intended one, plus absent keys the console still holds."""
-    out: dict = {k: {"intended": None, "saved": saved[k]} for k in absent if _present(saved.get(k)) is not None}
+    out: dict = {k: {"intended": None, "saved": _clean(saved[k])} for k in absent
+                 if _present(saved.get(k)) is not None}
     for key, want in intended.items():
         have = saved.get(key)
         if isinstance(want, dict):
             have = have if isinstance(have, dict) else {}
             for sub, sub_want in want.items():
                 if have.get(sub) != sub_want:
-                    out[f"{key}.{sub}"] = {"intended": sub_want, "saved": have.get(sub)}
+                    out[f"{key}.{sub}"] = {"intended": sub_want, "saved": _clean(have.get(sub))}
         elif have != want:
-            out[key] = {"intended": want, "saved": have}
+            out[key] = {"intended": want, "saved": _clean(have)}
     return out
 
 
@@ -244,6 +262,7 @@ async def create_nat_rule(
     (omit translated_ip/port). Rules apply in rule_index order; omit it to
     append after the existing rules.
     """
+    params = _call_params(locals())
     body = build_rule(
         description=description, nat_type=nat_type, protocol=protocol, ip_version=ip_version,
         in_interface=in_interface, out_interface=out_interface, translated_ip=translated_ip,
@@ -259,15 +278,19 @@ async def create_nat_rule(
     if error:
         return error
     if not confirm:
+        _remember_preview(client, "create_nat_rule", params, body)
         return _preview(
             "create_nat_rule",
             f"Will create {nat_type} rule '{description}' at rule_index {body['rule_index']} "
             f"(enabled={enabled}). Call again with confirm=True to execute.",
             _IMPACT, body=body,
         )
+    error = _check_preview(client, "create_nat_rule", params, body)
+    if error:
+        return error
     response = await client.post(NAT_PATH, json=body)
     client.invalidate_cache(_CACHE)
-    result = _executed("create_nat_rule", response)
+    result = _result(_executed("create_nat_rule", response))
     if not result["executed"]:
         return result
     return {**result, **await _verify(client, _saved_id(response), body, _absent_keys(body))}
@@ -311,10 +334,15 @@ async def _put(client: UnifiClient, tool: str, rule_id: str, record: dict, inten
                absent: tuple[str, ...] = ()) -> dict:
     response = await client.put(f"{NAT_PATH}/{rule_id}", json=record)
     client.invalidate_cache(_CACHE)
-    result = _executed(tool, response, rule_id=rule_id)
+    result = _result(_executed(tool, response, rule_id=rule_id))
     if not result["executed"]:
         return result
     return {**result, **await _verify(client, rule_id, intended, absent)}
+
+
+def _result(executed: dict) -> dict:
+    """The executed/not-executed result without the raw controller response (untrusted text)."""
+    return {k: v for k, v in executed.items() if k != "response"}
 
 
 def _merge_args(current: dict, given: dict, clears: dict) -> dict:
@@ -385,6 +413,7 @@ async def update_nat_rule(
     rule is validated like create_nat_rule. Refused with CONFLICT if the rule
     changed after the preview.
     """
+    params = _call_params(locals())
     clears = {"clear_source": clear_source, "clear_destination": clear_destination,
               "clear_translated_port": clear_translated_port}
     for name, value in clears.items():
@@ -399,10 +428,11 @@ async def update_nat_rule(
     if error:
         return error
     moved = rule_index if rule_index is not None and rule_index != current.get("rule_index") else None
-    return await _apply_update(client, rule_id, current, _merge_args(current, given, clears), moved, confirm)
+    args = _merge_args(current, given, clears)
+    return await _apply_update(client, params, rule_id, current, args, moved, confirm)
 
 
-async def _apply_update(client: UnifiClient, rule_id: str, current: dict, args: dict,
+async def _apply_update(client: UnifiClient, params: dict, rule_id: str, current: dict, args: dict,
                         moved_to: int | None, confirm: bool) -> dict:
     if is_error(args):
         return args
@@ -415,58 +445,61 @@ async def _apply_update(client: UnifiClient, rule_id: str, current: dict, args: 
         return error
     record = _updated_record(current, body)
     if not confirm:
-        _remember_preview("update_nat_rule", rule_id, current)
+        _remember_preview(client, "update_nat_rule", params, record)
         return _preview(
             "update_nat_rule", f"Will update NAT rule {rule_id}. Call again with confirm=True to execute.",
             _IMPACT, rule_id=rule_id, before=_format_nat_rule(current), after=_format_nat_rule(record),
             changes=_changes(current, record, sorted(set(body) | set(_TYPE_SPECIFIC))),
         )
-    conflict = _changed_since_preview("update_nat_rule", rule_id, current)
-    if conflict:
-        return conflict
+    error = _check_preview(client, "update_nat_rule", params, record)
+    if error:
+        return error
     return await _put(client, "update_nat_rule", rule_id, record, body, _absent_keys(body))
 
 
 async def toggle_nat_rule(client: UnifiClient, rule_id: str, enabled: bool, confirm: bool = False) -> dict:
     """Enable or disable a user-defined NAT rule without changing anything else. Preview first."""
+    params = _call_params(locals())
     if not isinstance(enabled, bool):
         return validation_error("enabled must be a boolean.")
     current, error = await _load_editable(client, rule_id, "toggled")
     if error:
         return error
+    record = {**current, "enabled": enabled}
     if not confirm:
-        _remember_preview("toggle_nat_rule", rule_id, current)
+        _remember_preview(client, "toggle_nat_rule", params, record)
         return _preview(
             "toggle_nat_rule",
             f"Will set NAT rule '{_format_nat_rule(current)['description']}' enabled={enabled}. "
             "Call again with confirm=True to execute.",
             _IMPACT, rule_id=rule_id, enabled=enabled,
         )
-    conflict = _changed_since_preview("toggle_nat_rule", rule_id, current)
-    if conflict:
-        return conflict
-    return await _put(client, "toggle_nat_rule", rule_id, {**current, "enabled": enabled}, {"enabled": enabled})
+    error = _check_preview(client, "toggle_nat_rule", params, record)
+    if error:
+        return error
+    return await _put(client, "toggle_nat_rule", rule_id, record, {"enabled": enabled})
 
 
 async def delete_nat_rule(client: UnifiClient, rule_id: str, confirm: bool = False) -> dict:
     """Delete a user-defined NAT rule. Irreversible; preview first."""
+    params = _call_params(locals())
     current, error = await _load_editable(client, rule_id, "deleted")
     if error:
         return error
     if not confirm:
-        _remember_preview("delete_nat_rule", rule_id, current)
+        _remember_preview(client, "delete_nat_rule", params, current)
         return _preview(
             "delete_nat_rule",
             f"Will delete NAT rule '{_format_nat_rule(current)['description']}'. This is irreversible. "
             "Call again with confirm=True to execute.",
             _IMPACT, rule_id=rule_id, rule=_format_nat_rule(current),
         )
-    conflict = _changed_since_preview("delete_nat_rule", rule_id, current)
-    if conflict:
-        return conflict
+    error = _check_preview(client, "delete_nat_rule", params, current)
+    if error:
+        return error
     response = await client.delete(f"{NAT_PATH}/{rule_id}")
     client.invalidate_cache(_CACHE)
-    result = _executed("delete_nat_rule", response, expect_body=False, rule_id=rule_id)
+    result = _result(_executed("delete_nat_rule", response, expect_body=False, rule_id=rule_id))
     if _find(await _fetch_rules(client), rule_id) is None:
         return {**result, "verified": True}
     return {**result, "verified": False,

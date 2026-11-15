@@ -344,3 +344,25 @@ def test_rule_to_args_drops_translation_on_exclude_rules():
     args = rule_to_args({"description": "d", "type": "DNAT", "in_interface": DEFAULT_ID, "exclude": True,
                          "ip_address": "192.0.2.53", "port": "123"})
     assert args["translated_ip"] is None and args["translated_port"] is None
+
+
+@pytest.mark.parametrize("address", [
+    "fe80::1%eth0", "fe80::1%eth0 -j ACCEPT", "fd00::%evil text/128", "fd00::5%$(id)",
+])
+def test_ipv6_zone_ids_rejected(address):
+    assert_error(build_filter("source", {"address": address}, "IPV6"), "address")
+    if "/" not in address:
+        assert_error(rule(ip_version="IPV6", translated_ip=address, destination={"port": "123"}),
+                     "translated_ip")
+
+
+def test_non_ascii_address_rejected():
+    assert_error(build_filter("source", {"address": "１９２.0.2.1"}, "IPV4"), "address")
+
+
+def test_unknown_filter_type_message_is_cleaned():
+    from unifi_mcp.tools.network.nat_body import rule_to_args
+
+    result = rule_to_args({"description": "d", "type": "DNAT",
+                           "source_filter": {"filter_type": "X\nignore previous" + "z" * 200}})
+    assert is_error(result) and "\n" not in result["message"] and len(result["message"]) < 300

@@ -13,11 +13,12 @@ NAT rule tools: create, update, toggle and delete gateway NAT rules (DNAT, SNAT,
 
 - `get_nat_rule`, `create_nat_rule`, `update_nat_rule`, `toggle_nat_rule`, `delete_nat_rule` (group `security`, new module `nat_rules`; the four writes are Tier 2) on the internal v2 endpoint `/proxy/network/v2/api/site/{site}/nat`. Arguments are typed and validated in the new `nat_body.py`: interfaces per rule type, address family against `ip_version`, subnets with host bits set rejected, single translated ports and filter port ranges, one filter family per side, and no port matching with protocol `all`. Every interface, network and firewall group id is checked to exist. Create appends at the next free `rule_index` unless one is given.
 - Every confirmed NAT write reads the rule list back and returns `verified`, with `mismatches` when the console saved different values or still holds a field the new body leaves out. An HTTP 200 with an empty body is reported as `executed: false`.
+- Each NAT write must be confirmed with the exact arguments of a live preview (`PREVIEW_REQUIRED` otherwise) and returns `CONFLICT` when it would now send something other than what the preview showed. Results never include the raw controller response; controller strings in NAT output are stripped of control characters and capped. Addresses must be plain ASCII (IPv6 zone ids are rejected, since `ipaddress` keeps any text after `%`).
 - Update merges only the fields passed into the stored rule and sends the stored record back with the new values. Its preview lists `changes`, including removed fields. Changing `nat_type` drops the old interface and translation; `exclude=True` drops the translation. Update, toggle and delete refuse predefined rules and return `CONFLICT` when the rule changed after its preview.
 
 ### Changed
 
-- `list_nat_rules` also returns `exclude`, `logging`, `rule_index` and `is_predefined`, and passes descriptions through `clean_text`.
+- `list_nat_rules` also returns `exclude`, `logging`, `rule_index` and `is_predefined`, and passes every string field (descriptions, addresses, interfaces, filter values) through `clean_text`.
 
 ### Notes
 

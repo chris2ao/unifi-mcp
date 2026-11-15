@@ -21,7 +21,7 @@ and terraform-provider-unifi ``unifi/nat_resource.go``:
 import ipaddress
 from typing import Any
 
-from unifi_mcp.validation import check_enum, check_id, validation_error
+from unifi_mcp.validation import check_enum, check_id, clean_text, validation_error
 
 NAT_TYPES = ("DNAT", "SNAT", "MASQUERADE")
 PROTOCOLS = ("all", "tcp", "udp", "tcp_udp")
@@ -97,6 +97,13 @@ def address_value(value: Any, field: str, ip_version: str, allow_cidr: bool) -> 
     """Normalize an IP address (or CIDR when allowed) of the given IP version, or return an error."""
     if not isinstance(value, str):
         return validation_error(f"{field} must be an IP address string. Got: {value!r}.")
+    if "%" in value or not value.isascii():
+        # ipaddress keeps an IPv6 zone id ('%eth0') verbatim, which would let any text
+        # through to the gateway as an address.
+        return validation_error(
+            f"{field} must be a plain IP address or CIDR in ASCII, without a zone id such as '%eth0'. "
+            f"Got: {clean_text(value, 64)!r}."
+        )
     kind = "an IP address or CIDR" if allow_cidr else "a single IP address"
     try:
         if "/" in value:
@@ -302,7 +309,7 @@ def _filter_to_spec(side: str, stored: Any) -> dict | None:
         return {"firewall_group_ids": list(stored.get("firewall_group_ids") or [])}
     if filter_type != "ADDRESS_AND_PORT":
         return validation_error(
-            f"This rule's {side} filter uses filter_type {filter_type}, which these tools do not edit. "
+            f"This rule's {side} filter uses filter_type {clean_text(filter_type, 40)!r}, which these tools do not edit. "
             "Change it in the UniFi UI."
         )
     spec = {key: stored[key] for key in ("address", "port") if _present(stored.get(key)) is not None}
