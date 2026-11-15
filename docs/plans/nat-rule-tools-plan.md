@@ -237,12 +237,12 @@ git commit -m "feat: CLAUD-929 validate and build NAT rule bodies"
 
 ### Task 6: live smoke test with a throwaway rule
 
-- [ ] **Step 1:** Point the MCP at the branch checkout (it already is: `~/.claude/scripts/unifi-wrapper.sh` runs `~/Github_Projects/unifi-mcp`) and ask the owner to reconnect the `unifi` server with `/mcp`. Confirm with `get_server_info` and `list_tool_groups` that `create_nat_rule` exists.
-- [ ] **Step 2:** Preview, then confirm `create_nat_rule(description="unifi-mcp smoke test (delete me)", nat_type="DNAT", protocol="udp", in_interface=<Default id>, translated_ip="192.0.2.53", translated_port=65000, destination={"port": "65000"}, enabled=False)`. Expected: `executed: True`, `verified: True`.
-- [ ] **Step 3:** `get_nat_rule` on it; save the raw record (ids replaced with placeholders) as `tests/fixtures/nat_rules_live.json` and add `test_live_shape_round_trips` (`rule_to_args` then `build_rule` reproduces its body keys). If the live record has keys or value spellings this plan did not expect, fix `nat_body.py` first and note it in the CHANGELOG.
-- [ ] **Step 4:** `update_nat_rule(description="unifi-mcp smoke test 2 (delete me)")`, then `toggle_nat_rule(enabled=True)` and `toggle_nat_rule(enabled=False)` (UDP 65000 is unused on this LAN, so enabling it briefly changes nothing). Each `verified: True`. This settles whether PUT accepts the full fetched record.
-- [ ] **Step 5:** `delete_nat_rule`; `verified: True`; `list_nat_rules` returns `[]` again.
-- [ ] **Step 6:** Update the CHANGELOG Notes and COMPATIBILITY row with what was verified live. Commit `test: CLAUD-929 pin the live NAT rule shape`.
+- [x] **Step 1:** Point the MCP at the branch checkout (it already is: `~/.claude/scripts/unifi-wrapper.sh` runs `~/Github_Projects/unifi-mcp`) and ask the owner to reconnect the `unifi` server with `/mcp`. Confirm with `get_server_info` and `list_tool_groups` that `create_nat_rule` exists.
+- [x] **Step 2:** Preview, then confirm `create_nat_rule(description="unifi-mcp smoke test (delete me)", nat_type="DNAT", protocol="udp", in_interface=<Default id>, translated_ip="192.0.2.53", translated_port=65000, destination={"port": "65000"}, enabled=False)`. Expected: `executed: True`, `verified: True`.
+- [x] **Step 3:** `get_nat_rule` on it; save the raw record (ids replaced with placeholders) as `tests/fixtures/nat_rules_live.json` and add `test_live_shape_round_trips` (`rule_to_args` then `build_rule` reproduces its body keys). If the live record has keys or value spellings this plan did not expect, fix `nat_body.py` first and note it in the CHANGELOG.
+- [x] **Step 4:** `update_nat_rule(description="unifi-mcp smoke test 2 (delete me)")`, then `toggle_nat_rule(enabled=True)` and `toggle_nat_rule(enabled=False)` (UDP 65000 is unused on this LAN, so enabling it briefly changes nothing). Each `verified: True`. This settles whether PUT accepts the full fetched record.
+- [x] **Step 5:** `delete_nat_rule`; `verified: True`; `list_nat_rules` returns `[]` again.
+- [x] **Step 6:** Update the CHANGELOG Notes and COMPATIBILITY row with what was verified live. Commit `test: CLAUD-929 pin the live NAT rule shape`.
 
 ### Task 7: release v0.11.0
 
